@@ -32,7 +32,7 @@ grep -Fxq -- '- Invoke other agents.' <<< "$forbidden_work"
 grep -q 'Do not open V1 while any of these remain true:' "$spec"
 grep -q 'V1 may open: No' "$worksheet"
 
-matches="$(grep -HnE '(^|[^A-Za-z])(setup|doctor|uninstall|hooks?|reports?|nudges?|enforcement|plugin packaging|enterprise-managed|MCP|Codegraph)([^A-Za-z]|$)' "$agent" "$spec" "$worksheet" || true)"
+matches="$(grep -HnE '(^|[^A-Za-z])(setup|doctor|uninstall|installers?|automatic configuration mutation|automatic Claude Code configuration mutation|configuration mutation|backups?|dry-?run|hooks?|reports?|nudges?|enforcement|team rollout|project rollout|team or project rollout|team/project rollout|plugin|plugin packaging|enterprise|enterprise-managed|enterprise controls?|enterprise-managed controls?|MCP|Codegraph)([^A-Za-z]|$)' "$agent" "$spec" "$worksheet" || true)"
 
 remaining_matches=""
 while IFS= read -r line; do
@@ -45,18 +45,25 @@ while IFS= read -r line; do
     *"Do not open V1 while any of these remain true:"* | \
     *"V1 Handoff Conditions"* | \
     *"Only after V0 passes"* | \
+    *":- Installer commands." | \
+    *":- Automatic Claude Code configuration mutation." | \
     *":- Doctor command." | \
     *":- Uninstall command." | \
+    *":- Backups." | \
+    *":- Dry-run behavior." | \
     *":- Hooks." | \
     *":- Reports." | \
     *":- Prompt nudges." | \
     *":- Soft enforcement." | \
+    *":- Team or project rollout machinery." | \
     *":- Claude Code plugin packaging." | \
     *":- Enterprise-managed controls." | \
     *":- MCP." | \
     *":- \`setup\`." | \
     *":- \`doctor\`." | \
     *":- \`uninstall\`." | \
+    *":- Backups." | \
+    *":- Dry-run behavior." | \
     *"V1 may open: No"* | \
     *"not installed into a user's global Claude Code configuration"* | \
     *"without making any implementation recommendations"* | \
