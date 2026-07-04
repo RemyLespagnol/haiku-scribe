@@ -31,7 +31,9 @@ Expected useful result:
 
 Result:
 
-- Outcome: Not run
+- Trial pass/fail: Not evaluated
+- Files/artifact types inspected: Not measured
+- Summary specificity: Not measured
 - Raw context avoided: Not measured
 - Evidence quality: Not measured
 - Suggested direct reads quality: Not measured
@@ -58,7 +60,9 @@ Expected useful result:
 
 Result:
 
-- Outcome: Not run
+- Trial pass/fail: Not evaluated
+- Files/artifact types inspected: Not measured
+- Summary specificity: Not measured
 - Raw context avoided: Not measured
 - Evidence quality: Not measured
 - Suggested direct reads quality: Not measured
@@ -85,7 +89,9 @@ Expected useful result:
 
 Result:
 
-- Outcome: Not run
+- Trial pass/fail: Not evaluated
+- Files/artifact types inspected: Not measured
+- Summary specificity: Not measured
 - Raw context avoided: Not measured
 - Evidence quality: Not measured
 - Suggested direct reads quality: Not measured
@@ -112,7 +118,9 @@ Expected useful result:
 
 Result:
 
-- Outcome: Not run
+- Trial pass/fail: Not evaluated
+- Files/artifact types inspected: Not measured
+- Summary specificity: Not measured
 - Raw context avoided: Not measured
 - Evidence quality: Not measured
 - Suggested direct reads quality: Not measured
@@ -139,7 +147,9 @@ Expected useful result:
 
 Result:
 
-- Outcome: Not run
+- Trial pass/fail: Not evaluated
+- Files/artifact types inspected: Not measured
+- Summary specificity: Not measured
 - Raw context avoided: Not measured
 - Evidence quality: Not measured
 - Suggested direct reads quality: Not measured
