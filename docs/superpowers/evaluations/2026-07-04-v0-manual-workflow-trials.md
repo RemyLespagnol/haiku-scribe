@@ -125,14 +125,14 @@ Expected useful result:
 
 Result:
 
-- Trial pass/fail: Not evaluated
-- Files/artifact types inspected: Not measured
-- Summary specificity: Not measured
-- Raw context avoided: Not measured
-- Evidence quality: Not measured
-- Suggested direct reads quality: Not measured
-- Main workflow impact: Not measured
-- Notes: Not run yet
+- Trial pass/fail: Pass
+- Files/artifact types inspected: `docs/haiku_scribe_prd.md`, `docs/superpowers/specs/2026-07-04-v0-manual-subagent-design.md`
+- Summary specificity: Specific enough to map the bulk-reading threshold, required evidence format, and main-model takeover boundary.
+- Raw context avoided: The main Claude session received a compact cross-file evidence map instead of manually tracing the flow across the PRD and V0 spec.
+- Evidence quality: Mixed; the response named the right source areas and concepts, but some pasted line references were visibly garbled or truncated in the returned text.
+- Suggested direct reads quality: Not requested in this trial prompt because the user asked for only an evidence map.
+- Main workflow impact: Positive. The output was useful for orientation, but citation formatting needs scrutiny before relying on it for exact follow-up reads.
+- Notes: Useful map of thresholds and handoff boundaries. The most important risk in this trial is citation cleanliness, not missing product understanding.
 
 ## Trial 5: Evidence Extraction Before Debugging Or Design Reasoning
 
@@ -154,29 +154,29 @@ Expected useful result:
 
 Result:
 
-- Trial pass/fail: Not evaluated
-- Files/artifact types inspected: Not measured
-- Summary specificity: Not measured
-- Raw context avoided: Not measured
-- Evidence quality: Not measured
-- Suggested direct reads quality: Not measured
-- Main workflow impact: Not measured
-- Notes: Not run yet
+- Trial pass/fail: Fail
+- Files/artifact types inspected: `docs/superpowers/specs/2026-07-04-v0-manual-subagent-design.md`, roadmap spec
+- Summary specificity: Specific enough to identify that all nine capabilities are excluded from V0.
+- Raw context avoided: The main Claude session avoided rereading the entire spec set just to answer the scope question.
+- Evidence quality: Fail; the answer named the V0 spec and roadmap but did not provide file/line references or a structured evidence section.
+- Suggested direct reads quality: Fail; no direct-read guidance was provided.
+- Main workflow impact: Mixed. The answer was directionally correct, but it did not meet the evidence contract required for scoped verification work.
+- Notes: This is a useful scope hint, not a sufficient evidence package for final scope decisions.
 
 ## Final V0 Gate Decision
 
 Product or usage gate:
 
-- Status: In evaluation
-- Evidence: Trial 1 and Trial 2 passed. Trial 3 produced useful compression but failed the required response contract. Run Trials 4 and 5 before setting the overall gate to pass or fail.
+- Status: Partial pass
+- Evidence: Trials 1, 2, and 4 show the subagent is useful for read-heavy orientation, roadmap summarization, and cross-file flow mapping. Trials 3 and 5 still show response-contract drift under realistic prompts.
 
 Technical or security gate:
 
-- Status: In evaluation
-- Evidence: Claude Code can invoke the project-local subagent, and the subagent stayed read-only in observed trials. Trial 3 shows the response contract still needs validation pressure.
+- Status: Partial pass
+- Evidence: The project-local subagent is invokable, stayed read-only in observed trials, and the V0 contract is documented clearly. The main unresolved issue is contract adherence: the agent does not consistently return the required evidence-shaped output unless the prompt is highly explicit.
 
 Decision:
 
-- V0 status: In evaluation
+- V0 status: Useful but not yet ready to open V1
 - V1 may open: No
-- Reason: Manual trials are not complete, and one completed trial showed response-format drift.
+- Reason: The manual workflow is clearly valuable, but the response contract remains too inconsistent across realistic trial prompts. V0 should either tighten the subagent prompt or narrow the accepted invocation contract before packaging work starts.
