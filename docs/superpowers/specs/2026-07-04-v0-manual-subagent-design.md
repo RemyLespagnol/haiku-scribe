@@ -106,7 +106,11 @@ The main Claude session should read directly instead of delegating when:
 - A small file must be inspected before changing it.
 - The task requires final reasoning, diagnosis, architecture judgment, or security judgment.
 - The user explicitly asks the main Claude session to read exact content.
-- The content is likely secret-bearing and should not be read without explicit user intent.
+
+Likely secret-bearing content is a separate case:
+
+- Do not read it directly or delegate it unless the user explicitly asks for that content.
+- When explicit user intent exists, the main Claude session should inspect it directly rather than delegating.
 
 ## Required Response Shape
 
