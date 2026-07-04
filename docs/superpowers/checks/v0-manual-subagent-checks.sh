@@ -16,17 +16,23 @@ grep -q '^name: haiku-scribe$' "$agent"
 grep -q '^model: haiku$' "$agent"
 grep -q '^tools: Read, Glob, Grep$' "$agent"
 
-grep -q 'Edit files' "$agent"
-grep -q 'Write files' "$agent"
-grep -q 'Run shell commands' "$agent"
-grep -q 'Use web access' "$agent"
-grep -q 'Use MCP tools' "$agent"
-grep -q 'Invoke other agents' "$agent"
+forbidden_work="$(awk '
+  $0 == "You must not:" { in_block = 1; next }
+  in_block && /^## / { exit }
+  in_block { print }
+' "$agent")"
+
+grep -Fxq -- '- Edit files.' <<< "$forbidden_work"
+grep -Fxq -- '- Write files.' <<< "$forbidden_work"
+grep -Fxq -- '- Run shell commands.' <<< "$forbidden_work"
+grep -Fxq -- '- Use web access.' <<< "$forbidden_work"
+grep -Fxq -- '- Use MCP tools.' <<< "$forbidden_work"
+grep -Fxq -- '- Invoke other agents.' <<< "$forbidden_work"
 
 grep -q 'Do not open V1 while any of these remain true:' "$spec"
 grep -q 'V1 may open: No' "$worksheet"
 
-matches="$(grep -RInE '(^|[^A-Za-z])(setup|doctor|uninstall|hooks?|reports?|nudges?|enforcement|plugin packaging|enterprise-managed|MCP|Codegraph)([^A-Za-z]|$)' .claude docs/superpowers/specs/2026-07-04-v0-manual-subagent-design.md docs/superpowers/evaluations/2026-07-04-v0-manual-workflow-trials.md || true)"
+matches="$(grep -HnE '(^|[^A-Za-z])(setup|doctor|uninstall|hooks?|reports?|nudges?|enforcement|plugin packaging|enterprise-managed|MCP|Codegraph)([^A-Za-z]|$)' "$agent" "$spec" "$worksheet" || true)"
 
 remaining_matches=""
 while IFS= read -r line; do
