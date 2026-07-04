@@ -32,47 +32,39 @@ grep -Fxq -- '- Invoke other agents.' <<< "$forbidden_work"
 grep -q 'Do not open V1 while any of these remain true:' "$spec"
 grep -q 'V1 may open: No' "$worksheet"
 
-matches="$(grep -HnE '(^|[^A-Za-z])(setup|doctor|uninstall|installers?|automatic configuration mutation|automatic Claude Code configuration mutation|configuration mutation|backups?|dry-?run|hooks?|reports?|nudges?|enforcement|team rollout|project rollout|team or project rollout|team/project rollout|plugin|plugin packaging|enterprise|enterprise-managed|enterprise controls?|enterprise-managed controls?|MCP|Codegraph)([^A-Za-z]|$)' "$agent" "$spec" "$worksheet" || true)"
+matches="$(grep -RInE '(^|[^A-Za-z])(setup|doctor|uninstall|installers?|automatic configuration mutation|automatic Claude Code configuration mutation|configuration mutation|backups?|dry-?run|hooks?|reports?|nudges?|enforcement|team rollout|project rollout|team or project rollout|team/project rollout|plugin|plugin packaging|enterprise|enterprise-managed|enterprise controls?|enterprise-managed controls?|MCP|Codegraph)([^A-Za-z]|$)' "$agent" "$spec" "$worksheet" || true)"
 
 remaining_matches=""
 while IFS= read -r line; do
   [[ -z "$line" ]] && continue
+  content="${line#*:}"
+  content="${content#*:}"
 
-  case "$line" in
-    *"Out of Scope"* | \
-    *"before any installer, hook, report, nudge, enforcement, team rollout, plugin, MCP, or enterprise machinery is built"* | \
-    *"excludes setup, doctor, uninstall, hooks, reports, nudges, enforcement, plugin packaging, enterprise-managed controls, MCP, and Codegraph integration"* | \
-    *"Do not open V1 while any of these remain true:"* | \
-    *"V1 Handoff Conditions"* | \
-    *"Only after V0 passes"* | \
-    *":- Installer commands." | \
-    *":- Automatic Claude Code configuration mutation." | \
-    *":- Doctor command." | \
-    *":- Uninstall command." | \
-    *":- Backups." | \
-    *":- Dry-run behavior." | \
-    *":- Hooks." | \
-    *":- Reports." | \
-    *":- Prompt nudges." | \
-    *":- Soft enforcement." | \
-    *":- Team or project rollout machinery." | \
-    *":- Claude Code plugin packaging." | \
-    *":- Enterprise-managed controls." | \
-    *":- MCP." | \
-    *":- \`setup\`." | \
-    *":- \`doctor\`." | \
-    *":- \`uninstall\`." | \
-    *":- Backups." | \
-    *":- Dry-run behavior." | \
-    *"V1 may open: No"* | \
-    *"not installed into a user's global Claude Code configuration"* | \
-    *"without making any implementation recommendations"* | \
-    *"Do not make the final scope decision"* | \
-    *"Use MCP tools"* | \
-    *"Codegraph integration in the base agent"* | \
-    *"direct user confirmation is needed before inspecting it"* | \
-    *"If asked to edit, write, run shell commands, browse the web, use MCP, call another agent"* | \
-    *"The agent needs shell, write, web, MCP, recursive-agent, or Codegraph access to be useful for the base workflow"*)
+  case "$content" in
+    "Validate whether a native Claude Code custom subagent named \`haiku-scribe\`, running on Haiku with read-only file-discovery tools, usefully compresses bulk-reading work before any installer, hook, report, nudge, enforcement, team rollout, plugin, MCP, or enterprise machinery is built." | \
+    "- Installer commands." | \
+    "- Automatic Claude Code configuration mutation." | \
+    "- Doctor command." | \
+    "- Uninstall command." | \
+    "- Backups." | \
+    "- Dry-run behavior." | \
+    "- Hooks." | \
+    "- Reports." | \
+    "- Prompt nudges." | \
+    "- Soft enforcement." | \
+    "- Team or project rollout machinery." | \
+    "- Claude Code plugin packaging." | \
+    "- Enterprise-managed controls." | \
+    "- MCP." | \
+    "- Codegraph integration in the base agent." | \
+    "When content appears secret-bearing, credential-like, or unrelated to the user request, stop and report that direct user confirmation is needed before inspecting it." | \
+    "- Use MCP tools." | \
+    "If asked to edit, write, run shell commands, browse the web, use MCP, call another agent, make final root-cause conclusions, make final architecture decisions, make final security conclusions, or produce final public project outputs, refuse that part and provide only read-only evidence support that fits this contract." | \
+    "Use haiku-scribe to extract evidence for whether V0 permits setup, doctor, uninstall, hooks, reports, nudges, enforcement, MCP, or Codegraph. Do not make the final scope decision." | \
+    "- The agent needs shell, write, web, MCP, recursive-agent, or Codegraph access to be useful for the base workflow." | \
+    "- \`setup\`." | \
+    "- \`doctor\`." | \
+    "- \`uninstall\`.")
       continue
       ;;
   esac
