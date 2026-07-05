@@ -165,15 +165,15 @@ Result:
 
 ## Final V0 Gate Decision
 Product usage gate:
-- Status: Pass known limitation
+- Status: Pass with known limitation
 - Evidence: Trials 1, 2, 4, 5 show useful context compression document orientation, large single-file summarization, cross-file evidence mapping, scoped evidence extraction. Trial 3 produced useful transcript orientation but exposed output-format instability.
 
 Technical or security gate:
-- Status: Pass known limitation
+- Status: Pass with known limitation
 - Evidence: project-local subagent invokable, stayed read-only in observed trials, maintained main-model ownership boundary. remaining issue not safety usefulness; strict output-shape stability transcript/log compression.
 
 Decision:
-- V0 status: Pass known limitation
+- V0 status: Pass with known limitation
 - V1 may open: Yes, if V1 keeps formatting validation outside agent prompt not add enforcement before packaging proves useful.
 - Reason: V0 validated core workflow value. Transcript/log formatting variance should tracked limitation, not used keep expanding Haiku prompt.
 

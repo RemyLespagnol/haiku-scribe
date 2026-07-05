@@ -24,3 +24,31 @@ The edit is limited to the requested evaluation doc plus this report file. The f
 
 ## Notes
 No concerns.
+
+## Fix Pass
+Commands run:
+
+```bash
+rtk proxy grep -nE "Pass with known limitation|V1 may open: Yes|formatting validation outside agent prompt|Known Limitation For V1" docs/superpowers/evaluations/2026-07-04-v0-manual-workflow-trials.md
+```
+
+Output:
+
+```text
+168:- Status: Pass with known limitation
+172:- Status: Pass with known limitation
+176:- V0 status: Pass with known limitation
+177:- V1 may open: Yes, if V1 keeps formatting validation outside agent prompt not add enforcement before packaging proves useful.
+180:## Known Limitation For V1
+```
+
+```bash
+rtk proxy grep -nE "Minimal Unblock For Opening V1|Trial 3 rerun recorded \`Pass\`|exact \`##\` headings|JSONL verification rerun" docs/superpowers/evaluations/2026-07-04-v0-manual-workflow-trials.md
+```
+
+Output:
+
+```text
+```
+
+Result: the first check matched the required Task 3 replacement phrases, and the second check returned no matches as expected.
