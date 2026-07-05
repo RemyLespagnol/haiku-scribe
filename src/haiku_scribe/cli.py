@@ -4,6 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from haiku_scribe.doctor import doctor_user
 from haiku_scribe.settings import SettingsError
 from haiku_scribe.setup import setup_user
 
@@ -45,7 +46,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "doctor":
-        print("Doctor not implemented")
+        result = doctor_user(args.home)
+        if result.ok:
+            print("Haiku Scribe doctor: ok")
+            return 0
+        print("Haiku Scribe doctor: failed")
+        for failure in result.failures:
+            print(f"- {failure}")
         return 1
 
     if args.command == "uninstall":
@@ -57,4 +64,3 @@ def main(argv: list[str] | None = None) -> int:
 
     parser.error(f"unknown command: {args.command}")
     return 2
-
