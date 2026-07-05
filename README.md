@@ -1,4 +1,8 @@
-# Haiku Scribe
+<p align="center">
+  <picture>
+    <img src="./logo.png" alt="Haiku Scribe logo" width="500">
+  </picture>
+</p>
 
 > A read-only Haiku-powered context compression worker for Claude Code.
 
