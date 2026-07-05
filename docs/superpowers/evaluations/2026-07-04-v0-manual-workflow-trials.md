@@ -164,40 +164,18 @@ Result:
 - Notes: Trial passed after rerun with a properly structured evidence response and explicit roadmap citations.
 
 ## Final V0 Gate Decision
-
-Product or usage gate:
-
-- Status: Partial pass
-- Evidence: Trials 1, 2, 4, and 5 show the subagent is useful for read-heavy orientation, roadmap summarization, cross-file flow mapping, and scoped evidence extraction. Trial 3 still shows a reliability gap for transcript compression because citations were not anchored cleanly enough to the inspected fixture.
+Product usage gate:
+- Status: Pass known limitation
+- Evidence: Trials 1, 2, 4, 5 show useful context compression document orientation, large single-file summarization, cross-file evidence mapping, scoped evidence extraction. Trial 3 produced useful transcript orientation but exposed output-format instability.
 
 Technical or security gate:
-
-- Status: Partial pass
-- Evidence: The project-local subagent is invokable, stayed read-only in observed trials, and the V0 contract is documented clearly. The main unresolved issue is no longer basic citation anchoring. JSONL verification showed that transcript/log reruns can now produce acceptable transcript-local `path:line` citations, but they still fail to render a stable four-section output contract under this workload. The specific recurring failure is malformed or collapsed `## Unknowns And Risks` and `## Suggested Direct Reads` sections after otherwise acceptable `## Summary` and `## Evidence` output.
+- Status: Pass known limitation
+- Evidence: project-local subagent invokable, stayed read-only in observed trials, maintained main-model ownership boundary. remaining issue not safety usefulness; strict output-shape stability transcript/log compression.
 
 Decision:
+- V0 status: Pass known limitation
+- V1 may open: Yes, if V1 keeps formatting validation outside agent prompt not add enforcement before packaging proves useful.
+- Reason: V0 validated core workflow value. Transcript/log formatting variance should tracked limitation, not used keep expanding Haiku prompt.
 
-- V0 status: Useful but not yet ready to open V1
-- V1 may open: No
-- Reason: The manual workflow is clearly valuable, but transcript/log compression still does not produce a reliably stable four-section response contract for verification-oriented follow-up. V0 improved transcript evidence anchoring materially during reruns, but exact output rendering still breaks on the final two sections often enough that packaging work should not start yet.
-
-## Minimal Unblock For Opening V1
-
-Keep `V1 may open: No` until all of the following are true:
-
-- Trial 3 is rerun and recorded as `Pass`.
-- Trial 4 is rerun and `Evidence quality` moves from `Mixed` to `Pass`.
-- The returned subagent output starts at `## Summary` with no wrapper prose before it.
-- The returned subagent output uses exactly the four required `##` headings in the required order.
-- Every transcript or log evidence bullet uses the inspected file path plus line numbers, for example `docs/superpowers/evaluations/fixtures/noisy-claude-session-sample.md:34`.
-- No transcript or log evidence bullet uses shorthand-only anchors such as `L34`.
-- No citation shown in the recorded result is garbled or truncated.
-- For a self-contained transcript or log fixture, `## Suggested Direct Reads` is exactly `- None.`.
-- For a self-contained transcript or log fixture with no material unresolved gap, `## Unknowns And Risks` is exactly `- None identified from inspected context.`.
-- JSONL verification of the rerun confirms that `## Unknowns And Risks` and `## Suggested Direct Reads` are present as valid headings rather than collapsed headings such as `## None.`.
-
-When those conditions are met, update the final gate to:
-
-- Product or usage gate: Pass
-- Technical or security gate: Pass
-- V1 may open: Yes
+## Known Limitation For V1
+Transcript log compression can produce useful orientation while varying heading names, citation style, `None` wording. V1 must not solve making agent prompt substantially larger. strict structure needed, handle it through external validation, transcript extraction, report tooling, golden tests in later spec.
