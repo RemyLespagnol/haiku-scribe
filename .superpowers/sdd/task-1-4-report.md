@@ -30,3 +30,9 @@ Implemented the bootstrap package for `haiku-scribe` across Tasks 1 through 4.
 
 - The container did not have `pytest` available initially, so it was installed into user site-packages to run the requested test suite.
 - The editable install was required so the subprocess-based CLI tests could resolve `python -m haiku_scribe` from the repo root.
+
+## Review Fix Verification
+
+- `python3 -m pytest tests/test_markdown_blocks.py tests/test_cli_setup.py`
+- `python3 -m pytest tests/test_markdown_blocks.py -q`
+- Result: 10 passed, covering block-preservation behavior and clean-checkout CLI subprocess imports.

@@ -18,11 +18,18 @@ def test_insert_block_replaces_existing_owned_block():
     assert second.count("<!-- HAIKU_SCRIBE_END -->") == 1
 
 
+def test_insert_block_preserves_surrounding_structure():
+    original = "# User notes\n\n" + render_guidance_block() + "\nKeep this.\n"
+
+    updated = insert_or_replace_block(original, render_guidance_block())
+
+    assert updated == original
+
+
 def test_remove_owned_block_keeps_unrelated_content():
     original = "# User notes\n\n" + render_guidance_block() + "\nKeep this.\n"
     cleaned = remove_owned_block(original)
 
-    assert "# User notes" in cleaned
-    assert "Keep this." in cleaned
+    assert cleaned == "# User notes\n\n\nKeep this.\n"
     assert "HAIKU_SCRIBE_START" not in cleaned
     assert "HAIKU_SCRIBE_END" not in cleaned

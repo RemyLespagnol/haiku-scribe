@@ -4,10 +4,21 @@ from haiku_scribe.contracts import GUIDANCE_END, GUIDANCE_START
 
 
 def insert_or_replace_block(existing: str, block: str) -> str:
-    without = remove_owned_block(existing).rstrip()
-    if without:
-        return without + "\n\n" + block.rstrip() + "\n"
-    return block.rstrip() + "\n"
+    start = existing.find(GUIDANCE_START)
+    end = existing.find(GUIDANCE_END)
+    if start == -1 or end == -1 or end < start:
+        if not existing:
+            return block
+        if existing.endswith("\n\n"):
+            return existing + block
+        if existing.endswith("\n"):
+            return existing + "\n" + block
+        return existing + "\n\n" + block
+
+    end += len(GUIDANCE_END)
+    if end < len(existing) and existing[end] == "\n":
+        end += 1
+    return existing[:start] + block + existing[end:]
 
 
 def remove_owned_block(existing: str) -> str:
@@ -16,11 +27,6 @@ def remove_owned_block(existing: str) -> str:
     if start == -1 or end == -1 or end < start:
         return existing
     end += len(GUIDANCE_END)
-    before = existing[:start].rstrip()
-    after = existing[end:].lstrip("\n")
-    if before and after:
-        return before + "\n\n" + after
-    if before:
-        return before + "\n"
-    return after
-
+    if end < len(existing) and existing[end] == "\n":
+        end += 1
+    return existing[:start] + existing[end:]
