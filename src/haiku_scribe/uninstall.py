@@ -4,37 +4,16 @@ import json
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from haiku_scribe.markdown_blocks import remove_owned_block
 from haiku_scribe.paths import ClaudePaths
-from haiku_scribe.settings import SettingsError, load_json_object
-from haiku_scribe.contracts import DEFAULT_DENY_RULES
+from haiku_scribe.settings import SettingsError, load_json_object, remove_owned_deny_rules
 
 
 @dataclass(frozen=True)
 class UninstallResult:
     planned: list[str]
     removed: list[Path]
-
-
-def _remove_owned_deny_rules(settings: dict[str, Any]) -> bool:
-    permissions = settings.get("permissions")
-    if permissions is None:
-        return False
-    if not isinstance(permissions, dict):
-        raise SettingsError("settings.permissions must be a JSON object")
-
-    existing = permissions.get("deny", [])
-    if not isinstance(existing, list):
-        raise SettingsError("settings.permissions.deny must be a JSON array")
-
-    updated = [rule for rule in existing if rule not in DEFAULT_DENY_RULES]
-    if updated == existing:
-        return False
-
-    permissions["deny"] = updated
-    return True
 
 
 def uninstall_user(home: Path, dry_run: bool = False) -> UninstallResult:
@@ -57,10 +36,15 @@ def uninstall_user(home: Path, dry_run: bool = False) -> UninstallResult:
     settings = None
     settings_changed = False
     if paths.settings_path.exists():
-        settings = load_json_object(paths.settings_path)
-        settings_changed = _remove_owned_deny_rules(settings)
-        if settings_changed:
-            planned.append(f"Would remove owned deny rules from {paths.settings_path}")
+        try:
+            settings = load_json_object(paths.settings_path)
+            settings_changed = remove_owned_deny_rules(settings)
+        except SettingsError:
+            settings = None
+            settings_changed = False
+        else:
+            if settings_changed:
+                planned.append(f"Would remove owned deny rules from {paths.settings_path}")
 
     backup_root = paths.claude_dir / "backups" / "haiku-scribe"
     if backup_root.exists():
