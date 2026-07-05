@@ -81,7 +81,7 @@ Result:
 User request:
 
 ```text
-Use the haiku-scribe subagent to compress docs/superpowers/evaluations/fixtures/noisy-claude-session-sample.md into key decisions, open questions, and evidence. Do not make final conclusions. Return exactly the required Haiku Scribe response sections.
+Use haiku-scribe subagent to compress docs/superpowers/evaluations/fixtures/noisy-claude-session-sample.md into key decisions, open questions, evidence. Do not make final conclusions. Return exactly required Haiku Scribe response sections.
 ```
 
 Delegation reason:
@@ -98,19 +98,19 @@ Result:
 
 - Trial pass/fail: Fail
 - Files/artifact types inspected: `docs/superpowers/evaluations/fixtures/noisy-claude-session-sample.md`
-- Summary specificity: Useful; it captured the V0 objective, completed artifacts, verification status, Trial 1 pass, and Trial 2 issue.
-- Raw context avoided: The main Claude session avoided reading the full noisy fixture directly and received a compact decision/open-question summary.
-- Evidence quality: Mixed; the response gave concrete references, but several references pointed to source files mentioned by the fixture rather than clearly anchoring every claim to fixture line locations.
-- Suggested direct reads quality: Fail; the response omitted the required `Suggested Direct Reads` section.
-- Main workflow impact: Mixed. The compression was useful, but the response did not obey the required output contract.
-- Notes: The response used `Open Questions` instead of `Unknowns And Risks` and did not include `Suggested Direct Reads`. This is a contract-drift failure even though the summary itself was helpful.
+- Summary specificity: Useful; the response captured the V0 planning workflow, key design decisions, Trial 1 pass, Trial 2 failure, and remaining open questions.
+- Raw context avoided: The main Claude session avoided reading the full noisy fixture directly and received a compact transcript summary instead.
+- Evidence quality: Fail; the response used bare `L34`-style references instead of anchoring each claim to `docs/superpowers/evaluations/fixtures/noisy-claude-session-sample.md:<line>` citations, and several evidence bullets omitted the full source path entirely.
+- Suggested direct reads quality: Pass; `None.` was a reasonable outcome because the fixture was self-contained for the requested compression task.
+- Main workflow impact: Mixed. The compression was useful for orientation, but the evidence package was not reliable enough for transcript-based verification work.
+- Notes: The remaining issue is no longer section presence. The response still failed the transcript citation contract because it did not use exact `path:line` anchors to the inspected fixture and did not render the exact required markdown headings in the returned output.
 
 ## Trial 4: Cross-File Flow Mapping
 
 User request:
 
 ```text
-Use haiku-scribe to map where the product says bulk reading starts, how evidence must be returned, and when the main model must take over. Provide only an evidence map.
+Use haiku-scribe map where the product says bulk reading starts, how evidence must be returned, and when the main model must take over. Provide only an evidence map.
 ```
 
 Delegation reason:
@@ -154,29 +154,29 @@ Expected useful result:
 
 Result:
 
-- Trial pass/fail: Fail
-- Files/artifact types inspected: `docs/superpowers/specs/2026-07-04-v0-manual-subagent-design.md`, roadmap spec
-- Summary specificity: Specific enough to identify that all nine capabilities are excluded from V0.
+- Trial pass/fail: Pass
+- Files/artifact types inspected: `docs/superpowers/specs/2026-07-04-v0-manual-subagent-design.md`, `docs/superpowers/specs/2026-07-04-haiku-scribe-roadmap-design.md`
+- Summary specificity: Specific enough to identify that setup, doctor, uninstall, hooks, reports, nudges, enforcement, MCP, and Codegraph are all excluded from V0 and deferred to later roadmap phases.
 - Raw context avoided: The main Claude session avoided rereading the entire spec set just to answer the scope question.
-- Evidence quality: Fail; the answer named the V0 spec and roadmap but did not provide file/line references or a structured evidence section.
-- Suggested direct reads quality: Fail; no direct-read guidance was provided.
-- Main workflow impact: Mixed. The answer was directionally correct, but it did not meet the evidence contract required for scoped verification work.
-- Notes: This is a useful scope hint, not a sufficient evidence package for final scope decisions.
+- Evidence quality: Pass; the response provided structured evidence with file paths and line references for both the V0 spec and the roadmap.
+- Suggested direct reads quality: Pass; `None.` was appropriate because the evidence package was already sufficient for the scoped question.
+- Main workflow impact: Positive. The answer stayed within the read-only evidence boundary and produced a usable verification package without drifting into a final scope decision.
+- Notes: Trial passed after rerun with a properly structured evidence response and explicit roadmap citations.
 
 ## Final V0 Gate Decision
 
 Product or usage gate:
 
 - Status: Partial pass
-- Evidence: Trials 1, 2, and 4 show the subagent is useful for read-heavy orientation, roadmap summarization, and cross-file flow mapping. Trials 3 and 5 still show response-contract drift under realistic prompts.
+- Evidence: Trials 1, 2, 4, and 5 show the subagent is useful for read-heavy orientation, roadmap summarization, cross-file flow mapping, and scoped evidence extraction. Trial 3 still shows a reliability gap for transcript compression because citations were not anchored cleanly enough to the inspected fixture.
 
 Technical or security gate:
 
 - Status: Partial pass
-- Evidence: The project-local subagent is invokable, stayed read-only in observed trials, and the V0 contract is documented clearly. The main unresolved issue is contract adherence: the agent does not consistently return the required evidence-shaped output unless the prompt is highly explicit.
+- Evidence: The project-local subagent is invokable, stayed read-only in observed trials, and the V0 contract is documented clearly. The main unresolved issue is transcript evidence quality: the agent can produce the required response shape in some cases, but transcript/log tasks still show weak citation anchoring and wrapper/heading drift.
 
 Decision:
 
 - V0 status: Useful but not yet ready to open V1
 - V1 may open: No
-- Reason: The manual workflow is clearly valuable, but the response contract remains too inconsistent across realistic trial prompts. V0 should either tighten the subagent prompt or narrow the accepted invocation contract before packaging work starts.
+- Reason: The manual workflow is clearly valuable, but transcript/log compression still does not produce citation-quality evidence reliably enough for verification-oriented follow-up. V0 should improve transcript evidence anchoring and exact output rendering before packaging work starts.
