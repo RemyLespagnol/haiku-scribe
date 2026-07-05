@@ -88,3 +88,18 @@ def test_setup_creates_backups_for_existing_files(tmp_path):
     assert len(backups) == 2
     assert any(path.name.endswith("CLAUDE.md.bak") for path in backups)
     assert any(path.name.endswith("settings.json.bak") for path in backups)
+
+
+def test_full_v1_user_journey(tmp_path):
+    dry = run_cli("setup", "--dry-run", "--home", str(tmp_path))
+    setup = run_cli("setup", "--home", str(tmp_path))
+    doctor_ok = run_cli("doctor", "--home", str(tmp_path))
+    uninstall = run_cli("uninstall", "--home", str(tmp_path))
+    doctor_missing = run_cli("doctor", "--home", str(tmp_path))
+
+    assert dry.returncode == 0
+    assert setup.returncode == 0
+    assert doctor_ok.returncode == 0
+    assert uninstall.returncode == 0
+    assert doctor_missing.returncode == 1
+    assert "missing agent file" in doctor_missing.stdout

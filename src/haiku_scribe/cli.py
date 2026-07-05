@@ -7,6 +7,7 @@ from pathlib import Path
 from haiku_scribe.doctor import doctor_user
 from haiku_scribe.settings import SettingsError
 from haiku_scribe.setup import setup_user
+from haiku_scribe.uninstall import uninstall_user
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -56,10 +57,19 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if args.command == "uninstall":
+        result = uninstall_user(args.home, dry_run=args.dry_run)
         if args.dry_run:
             print("Dry run: no files removed")
-        else:
-            print("Uninstall not implemented")
+            for item in result.planned:
+                print(item)
+            if not result.planned:
+                print("Nothing to remove")
+            return 0
+        if not result.removed:
+            print("Nothing to remove")
+            return 0
+        for path in result.removed:
+            print(f"Removed {path}")
         return 0
 
     parser.error(f"unknown command: {args.command}")
