@@ -28,6 +28,7 @@ def load_json_object(path: Path) -> dict[str, Any]:
 
 def merge_deny_rules(settings: dict[str, Any], deny_rules: tuple[str, ...]) -> dict[str, Any]:
     merged = deepcopy(settings)
+    previously_owned = _get_owned_deny_rules(merged)
     permissions = merged.setdefault("permissions", {})
     if not isinstance(permissions, dict):
         raise SettingsError("settings.permissions must be a JSON object")
@@ -37,11 +38,13 @@ def merge_deny_rules(settings: dict[str, Any], deny_rules: tuple[str, ...]) -> d
         raise SettingsError("settings.permissions.deny must be a JSON array")
 
     deny = list(existing)
+    added_rules: list[str] = []
     for rule in deny_rules:
         if rule not in deny:
             deny.append(rule)
+            added_rules.append(rule)
     permissions["deny"] = deny
-    _set_owned_deny_rules(merged, deny_rules)
+    _set_owned_deny_rules(merged, previously_owned + added_rules)
     return merged
 
 
@@ -58,7 +61,7 @@ def remove_owned_deny_rules(settings: dict[str, Any]) -> bool:
 
     owned_rules = _get_owned_deny_rules(settings)
     if not owned_rules:
-        return False
+        return _clear_owned_deny_rules(settings)
 
     updated = [rule for rule in existing if rule not in owned_rules]
     changed = updated != existing

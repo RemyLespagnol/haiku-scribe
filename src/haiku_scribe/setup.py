@@ -44,6 +44,8 @@ def setup_user(home: Path, dry_run: bool = False) -> SetupResult:
     settings_text = json.dumps(settings, indent=2, sort_keys=True) + "\n"
 
     written: list[Path] = []
+    if paths.agent_path.exists() and paths.agent_path.read_text(encoding="utf-8") != agent_text:
+        backup_existing(paths.agent_path, paths.claude_dir / "backups" / "haiku-scribe")
     if _write_text_if_changed(paths.agent_path, agent_text):
         written.append(paths.agent_path)
 
@@ -59,4 +61,3 @@ def setup_user(home: Path, dry_run: bool = False) -> SetupResult:
         written.append(paths.settings_path)
 
     return SetupResult(planned=planned, written=written)
-

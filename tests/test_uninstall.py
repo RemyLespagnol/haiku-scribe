@@ -36,7 +36,7 @@ def test_uninstall_dry_run_writes_nothing(tmp_path: Path) -> None:
     assert (tmp_path / ".claude" / "agents" / "haiku-scribe.md").exists()
 
 
-def test_uninstall_removes_agent_and_guidance_but_keeps_settings_and_user_content(tmp_path: Path) -> None:
+def test_uninstall_removes_owned_content_but_keeps_user_settings_and_content(tmp_path: Path) -> None:
     claude = tmp_path / ".claude"
     claude.mkdir()
     (claude / "CLAUDE.md").write_text("# My guidance\n", encoding="utf-8")
@@ -65,8 +65,9 @@ def test_uninstall_removes_agent_and_guidance_but_keeps_settings_and_user_conten
     assert settings["profile"]["name"] == "me"
     assert settings["permissions"]["allow"] == ["Edit"]
     assert "Read(./private)" in settings["permissions"]["deny"]
-    assert "Read(./.env)" not in settings["permissions"]["deny"]
-    assert "Read(**/*.pem)" not in settings["permissions"]["deny"]
+    assert "Read(./.env)" in settings["permissions"]["deny"]
+    assert "Read(**/*.pem)" in settings["permissions"]["deny"]
+    assert "Read(**/*credential*)" not in settings["permissions"]["deny"]
     assert not backup_root.exists()
 
 

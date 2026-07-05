@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import os
 import subprocess
@@ -24,7 +26,7 @@ def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_cli_help_lists_v1_commands():
+def test_cli_help_lists_v1_commands() -> None:
     result = run_cli("--help")
 
     assert result.returncode == 0
@@ -33,14 +35,14 @@ def test_cli_help_lists_v1_commands():
     assert "uninstall" in result.stdout
 
 
-def test_setup_dry_run_command_exists(tmp_path):
+def test_setup_dry_run_command_exists(tmp_path: Path) -> None:
     result = run_cli("setup", "--dry-run", "--home", str(tmp_path))
 
     assert result.returncode == 0
     assert "Dry run" in result.stdout
 
 
-def test_setup_dry_run_writes_nothing(tmp_path):
+def test_setup_dry_run_writes_nothing(tmp_path: Path) -> None:
     result = run_cli("setup", "--dry-run", "--home", str(tmp_path))
 
     assert result.returncode == 0
@@ -49,7 +51,7 @@ def test_setup_dry_run_writes_nothing(tmp_path):
     assert not (tmp_path / ".claude").exists()
 
 
-def test_setup_installs_agent_guidance_and_settings(tmp_path):
+def test_setup_installs_agent_guidance_and_settings(tmp_path: Path) -> None:
     result = run_cli("setup", "--home", str(tmp_path))
 
     assert result.returncode == 0
@@ -63,7 +65,7 @@ def test_setup_installs_agent_guidance_and_settings(tmp_path):
     assert "Read(**/*credential*)" in parsed["permissions"]["deny"]
 
 
-def test_setup_is_idempotent(tmp_path):
+def test_setup_is_idempotent(tmp_path: Path) -> None:
     first = run_cli("setup", "--home", str(tmp_path))
     second = run_cli("setup", "--home", str(tmp_path))
 
@@ -75,7 +77,7 @@ def test_setup_is_idempotent(tmp_path):
     assert settings["permissions"]["deny"].count("Read(**/*credential*)") == 1
 
 
-def test_setup_creates_backups_for_existing_files(tmp_path):
+def test_setup_creates_backups_for_existing_files(tmp_path: Path) -> None:
     claude = tmp_path / ".claude"
     (claude / "agents").mkdir(parents=True)
     (claude / "CLAUDE.md").write_text("# User guidance\n", encoding="utf-8")
@@ -90,7 +92,20 @@ def test_setup_creates_backups_for_existing_files(tmp_path):
     assert any(path.name.endswith("settings.json.bak") for path in backups)
 
 
-def test_full_v1_user_journey(tmp_path):
+def test_setup_backs_up_preexisting_same_name_agent(tmp_path: Path) -> None:
+    agent_path = tmp_path / ".claude" / "agents" / "haiku-scribe.md"
+    agent_path.parent.mkdir(parents=True)
+    agent_path.write_text("user agent", encoding="utf-8")
+
+    result = run_cli("setup", "--home", str(tmp_path))
+
+    assert result.returncode == 0
+    backups = sorted((tmp_path / ".claude" / "backups" / "haiku-scribe").glob("*haiku-scribe.md.bak"))
+    assert len(backups) == 1
+    assert backups[0].read_text(encoding="utf-8") == "user agent"
+
+
+def test_full_v1_user_journey(tmp_path: Path) -> None:
     dry = run_cli("setup", "--dry-run", "--home", str(tmp_path))
     setup = run_cli("setup", "--home", str(tmp_path))
     doctor_ok = run_cli("doctor", "--home", str(tmp_path))
