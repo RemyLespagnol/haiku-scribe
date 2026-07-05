@@ -20,7 +20,25 @@ for required in \
   '## Role' \
   '## Boundaries' \
   '## How Read' \
-  '## Response Shape' \
+  '## Response Shape'
+do
+  grep -Fxq -- "$required" "$agent"
+done
+
+must_not_block="$(
+  awk '
+    /^You must not:$/ { capture = 1; next }
+    /^## / && capture { capture = 0 }
+    capture { print }
+  ' "$agent"
+)"
+
+if [[ -z "$must_not_block" ]]; then
+  echo "agent is missing the You must not block" >&2
+  exit 1
+fi
+
+for forbidden in \
   '- Edit files.' \
   '- Write files.' \
   '- Run shell commands.' \
@@ -31,7 +49,7 @@ for required in \
   '- Make final architecture decisions.' \
   '- Make final security, authentication, authorization, permission conclusions.'
 do
-  grep -Fxq -- "$required" "$agent"
+  grep -Fxq -- "$forbidden" <<< "$must_not_block"
 done
 
 for removed in \
