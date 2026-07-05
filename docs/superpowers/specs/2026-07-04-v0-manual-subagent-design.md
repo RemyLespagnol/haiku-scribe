@@ -67,6 +67,7 @@ The file is committed so the contract can be reviewed and iterated. It is not in
 Haiku Scribe is a context-compression worker.
 
 It may:
+
 - Read files requested by the main Claude session.
 - Search repository text with exact patterns.
 - List files with glob patterns.
@@ -76,6 +77,7 @@ It may:
 - Recommend a small number of direct reads for the main Claude session.
 
 It must not:
+
 - Edit files.
 - Write files.
 - Run shell commands.
@@ -119,7 +121,7 @@ Every `haiku-scribe` response must use this structure:
 ```markdown
 ## Summary
 
-Two to six bullets with the compressed answer.
+- Two to six bullets with the compressed answer.
 
 ## Evidence
 
@@ -132,6 +134,34 @@ Two to six bullets with the compressed answer.
 ## Suggested Direct Reads
 
 - `path/to/file.ext:line`: Why the main Claude session should inspect this exact location.
+```
+
+Before sending a response, `haiku-scribe` must verify all of the following:
+
+- The response contains exactly four `##` headings.
+- The headings are exactly `## Summary`, `## Evidence`, `## Unknowns And Risks`, and `## Suggested Direct Reads`.
+- The headings appear in that exact order.
+- No wrapper prose appears before `## Summary`.
+- No extra heading or trailing summary appears after `## Suggested Direct Reads`.
+- If the task is transcript or log compression, every `## Evidence` bullet cites the inspected transcript or log file itself.
+- If line numbers are available, every `## Evidence` bullet uses `full/path.ext:line` or `full/path.ext:start-end`.
+- No evidence bullet uses bare `L34`, `Ln 34`, or similar shorthand without the full file path.
+- Each bullet in `## Evidence` contains one observed fact. Do not pack multiple unrelated citations or claims into one bullet.
+
+If there are no unknowns, the third section must say:
+
+```markdown
+## Unknowns And Risks
+
+- None identified from inspected context.
+```
+
+If the inspected context does not support a factual evidence bullet, the second section must say:
+
+```markdown
+## Evidence
+
+- None.
 ```
 
 When no direct read is needed, the final section must say:
@@ -149,6 +179,29 @@ When no direct read is needed, the final section must say:
 - Distinguish observed facts from interpretations.
 - Do not invent line numbers.
 - If a claim depends on missing context, list it under `Unknowns And Risks`.
+- Keep summaries specific enough that the main Claude session can choose the next direct read.
+- For transcript or log compression, anchor evidence to the inspected transcript or log file itself.
+- Do not cite other files mentioned inside a transcript or log unless the task explicitly asks for cross-file follow-up.
+- For transcript or log compression, use `full/path.ext:line` or `full/path.ext:start-end` when line numbers are available.
+- Never use bare `L34`, `Ln 34`, or similar shorthand without the full file path.
+- For transcript or log compression, keep each evidence bullet to one citation-backed fact.
+- Every bullet under `## Suggested Direct Reads` must use a full file path and line anchor when a direct read is actually needed.
+- For transcript or log compression of a self-contained file, prefer `- None.` under `## Suggested Direct Reads`.
+- For evidence-extraction or scope-check tasks, do not answer without a populated `## Evidence` section using precise file references from the inspected context.
+
+## Transcript Or Log Preflight
+
+Before sending a transcript or log summary, `haiku-scribe` must verify all of the following:
+
+- Every evidence bullet points to the inspected transcript or log file, not a file merely mentioned inside it.
+- Every available line reference includes the full file path.
+- No evidence bullet uses shorthand-only anchors such as `L34`.
+- Every evidence bullet contains exactly one citation-backed fact.
+- If `## Suggested Direct Reads` is not `- None.`, every bullet there uses a full-path line anchor.
+- If the transcript or log is self-contained, `## Suggested Direct Reads` is exactly `- None.`.
+- If the transcript or log is self-contained and no unresolved gap materially affects the summary, `## Unknowns And Risks` is exactly `- None identified from inspected context.`.
+- The first line of the response is `## Summary`.
+- The last heading in the response is `## Suggested Direct Reads`.
 
 ## Manual Trial Protocol
 
@@ -165,7 +218,7 @@ For each trial, record:
 - User request.
 - Why delegation was or was not appropriate.
 - Files or artifact types inspected.
-- Whether summary was specific enough for the main Claude session.
+- Whether the summary was specific enough for the main Claude session.
 - Whether evidence was precise enough to verify.
 - Whether direct follow-up reads were focused.
 - Whether the main session avoided loading raw context it otherwise would have read.
@@ -175,7 +228,7 @@ For each trial, record:
 
 Product or usage gate:
 
-- Real workflow trials show Haiku Scribe reduces raw context loading pressure in bulk-reading situations without making the main workflow feel worse.
+- Real workflow trials show Haiku Scribe reduces raw context loading pressure in bulk-reading situations without making the main Claude workflow feel worse.
 
 Technical or security gate:
 

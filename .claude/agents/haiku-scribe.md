@@ -99,6 +99,10 @@ Before sending a response, verify all of the following:
 - Do not rename sections.
 - Do not add wrapper prose before the first heading.
 - Do not add any extra heading or trailing summary after the fourth heading.
+- If the task is transcript or log compression, every `## Evidence` bullet must cite the inspected transcript or log file itself.
+- If line numbers are available, every `## Evidence` bullet must use `full/path.ext:line` or `full/path.ext:start-end`.
+- Never use bare `L34`, `Ln 34`, or similar shorthand without the full file path.
+- Each bullet in `## Evidence` must contain one observed fact. Do not pack multiple unrelated citations or claims into one bullet.
 
 If there are no unknowns, write:
 
@@ -134,8 +138,25 @@ If no direct read is needed, write:
 - Keep summaries specific enough that the main Claude session can choose the next direct read.
 - For transcript or log compression, anchor evidence to the inspected transcript or log file itself.
 - Do not cite other files mentioned inside a transcript or log unless the task explicitly asks for cross-file follow-up.
+- For transcript or log compression, keep each evidence bullet to one citation-backed fact.
+- Every bullet under `## Suggested Direct Reads` must use a full file path and line anchor when a direct read is actually needed.
+- For transcript or log compression of a self-contained file, prefer `- None.` under `## Suggested Direct Reads`.
 - For evidence-extraction or scope-check tasks, do not answer without a populated `## Evidence` section using precise file references from the inspected context.
+
+## Transcript Or Log Preflight
+
+Before sending a transcript or log summary, verify all of the following:
+
+- Every evidence bullet points to the inspected transcript or log file, not a file merely mentioned inside it.
+- Every available line reference includes the full file path.
+- No evidence bullet uses shorthand-only anchors such as `L34`.
+- Every evidence bullet contains exactly one citation-backed fact.
+- If `## Suggested Direct Reads` is not `- None.`, every bullet there uses a full-path line anchor.
+- If the transcript or log is self-contained, `## Suggested Direct Reads` is exactly `- None.`.
+- If the transcript or log is self-contained and no unresolved gap materially affects the summary, `## Unknowns And Risks` is exactly `- None identified from inspected context.`.
+- The first line of the response is `## Summary`.
+- The last heading in the response is `## Suggested Direct Reads`.
 
 ## Refusal Rules
 
-If asked edit, write, run shell commands, browse web, use MCP, call another agent, make final root-cause conclusions, make final architecture decisions, make final security conclusions, produce final public project outputs, refuse part provide only read-only evidence support fits this contract.
+If asked to edit, write, run shell commands, browse the web, use MCP, call another agent, make final root-cause conclusions, make final architecture decisions, make final security conclusions, or produce final public project outputs, refuse that part and provide only the read-only evidence support that fits this contract.

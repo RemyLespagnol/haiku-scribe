@@ -100,10 +100,10 @@ Result:
 - Files/artifact types inspected: `docs/superpowers/evaluations/fixtures/noisy-claude-session-sample.md`
 - Summary specificity: Useful; the response captured the V0 planning workflow, key design decisions, Trial 1 pass, Trial 2 failure, and remaining open questions.
 - Raw context avoided: The main Claude session avoided reading the full noisy fixture directly and received a compact transcript summary instead.
-- Evidence quality: Fail; the response used bare `L34`-style references instead of anchoring each claim to `docs/superpowers/evaluations/fixtures/noisy-claude-session-sample.md:<line>` citations, and several evidence bullets omitted the full source path entirely.
+- Evidence quality: Mixed. Early reruns failed because the response used bare `L34`-style references instead of anchoring each claim to `docs/superpowers/evaluations/fixtures/noisy-claude-session-sample.md:<line>` citations, and several evidence bullets omitted the full source path entirely. Later JSONL-verified reruns corrected the file-path anchoring and removed shorthand-only line references, but the response still did not render a stable four-section output reliably enough for verification-oriented follow-up.
 - Suggested direct reads quality: Pass; `None.` was a reasonable outcome because the fixture was self-contained for the requested compression task.
-- Main workflow impact: Mixed. The compression was useful for orientation, but the evidence package was not reliable enough for transcript-based verification work.
-- Notes: The remaining issue is no longer section presence. The response still failed the transcript citation contract because it did not use exact `path:line` anchors to the inspected fixture and did not render the exact required markdown headings in the returned output.
+- Main workflow impact: Mixed. The compression was useful for orientation, and citation quality improved materially after prompt tightening, but transcript-based verification still failed because the final two required sections were not rendered reliably.
+- Notes: JSONL verification across multiple reruns showed a consistent progression. Citation anchoring improved from shorthand-only `L34` references to full-path transcript anchors, and `## Summary` plus `## Evidence` became stable. The remaining blocker is output-shape stability: some reruns concatenated multiple citations into one evidence bullet, while later reruns collapsed `## Unknowns And Risks` and `## Suggested Direct Reads` into malformed headings such as `## None.` instead of producing valid final sections.
 
 ## Trial 4: Cross-File Flow Mapping
 
@@ -173,10 +173,31 @@ Product or usage gate:
 Technical or security gate:
 
 - Status: Partial pass
-- Evidence: The project-local subagent is invokable, stayed read-only in observed trials, and the V0 contract is documented clearly. The main unresolved issue is transcript evidence quality: the agent can produce the required response shape in some cases, but transcript/log tasks still show weak citation anchoring and wrapper/heading drift.
+- Evidence: The project-local subagent is invokable, stayed read-only in observed trials, and the V0 contract is documented clearly. The main unresolved issue is no longer basic citation anchoring. JSONL verification showed that transcript/log reruns can now produce acceptable transcript-local `path:line` citations, but they still fail to render a stable four-section output contract under this workload. The specific recurring failure is malformed or collapsed `## Unknowns And Risks` and `## Suggested Direct Reads` sections after otherwise acceptable `## Summary` and `## Evidence` output.
 
 Decision:
 
 - V0 status: Useful but not yet ready to open V1
 - V1 may open: No
-- Reason: The manual workflow is clearly valuable, but transcript/log compression still does not produce citation-quality evidence reliably enough for verification-oriented follow-up. V0 should improve transcript evidence anchoring and exact output rendering before packaging work starts.
+- Reason: The manual workflow is clearly valuable, but transcript/log compression still does not produce a reliably stable four-section response contract for verification-oriented follow-up. V0 improved transcript evidence anchoring materially during reruns, but exact output rendering still breaks on the final two sections often enough that packaging work should not start yet.
+
+## Minimal Unblock For Opening V1
+
+Keep `V1 may open: No` until all of the following are true:
+
+- Trial 3 is rerun and recorded as `Pass`.
+- Trial 4 is rerun and `Evidence quality` moves from `Mixed` to `Pass`.
+- The returned subagent output starts at `## Summary` with no wrapper prose before it.
+- The returned subagent output uses exactly the four required `##` headings in the required order.
+- Every transcript or log evidence bullet uses the inspected file path plus line numbers, for example `docs/superpowers/evaluations/fixtures/noisy-claude-session-sample.md:34`.
+- No transcript or log evidence bullet uses shorthand-only anchors such as `L34`.
+- No citation shown in the recorded result is garbled or truncated.
+- For a self-contained transcript or log fixture, `## Suggested Direct Reads` is exactly `- None.`.
+- For a self-contained transcript or log fixture with no material unresolved gap, `## Unknowns And Risks` is exactly `- None identified from inspected context.`.
+- JSONL verification of the rerun confirms that `## Unknowns And Risks` and `## Suggested Direct Reads` are present as valid headings rather than collapsed headings such as `## None.`.
+
+When those conditions are met, update the final gate to:
+
+- Product or usage gate: Pass
+- Technical or security gate: Pass
+- V1 may open: Yes
