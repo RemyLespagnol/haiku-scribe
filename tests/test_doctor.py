@@ -53,6 +53,17 @@ def test_doctor_reports_unsafe_agent_drift(tmp_path):
     assert "agent model is not haiku" in result.stdout
 
 
+def test_doctor_reports_agent_web_access_drift(tmp_path):
+    assert run_cli("setup", "--home", str(tmp_path)).returncode == 0
+    agent = tmp_path / ".claude" / "agents" / "haiku-scribe.md"
+    agent.write_text(agent.read_text(encoding="utf-8").replace("Browse web.", "Browse the web."), encoding="utf-8")
+
+    result = run_cli("doctor", "--home", str(tmp_path))
+
+    assert result.returncode == 1
+    assert "agent does not forbid web access" in result.stdout
+
+
 def test_doctor_reports_missing_deny_rule(tmp_path):
     assert run_cli("setup", "--home", str(tmp_path)).returncode == 0
     settings = tmp_path / ".claude" / "settings.json"

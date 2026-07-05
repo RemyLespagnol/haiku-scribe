@@ -24,6 +24,7 @@ def _check_agent_file(agent_path: Path) -> list[str]:
         ("agent name is not haiku-scribe", "name: haiku-scribe"),
         ("agent model is not haiku", "model: haiku"),
         ("agent tools are not read-only", "tools: Read, Glob, Grep"),
+        ("agent does not forbid web access", "Browse web."),
         ("agent does not forbid file edits", "Edit files"),
         ("agent does not forbid file writes", "Write files"),
         ("agent does not forbid shell execution", "Run shell commands"),

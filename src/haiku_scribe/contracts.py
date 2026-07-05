@@ -43,6 +43,7 @@ You must not:
 - Write files.
 - Run shell commands.
 - Browse web.
+- Browse web.
 - Use MCP tools.
 - Invoke other agents.
 - Make final root-cause conclusions.
@@ -97,4 +98,3 @@ Do not delegate:
 Main Claude must verify important claims before editing.
 {GUIDANCE_END}
 """
-

@@ -27,3 +27,7 @@ Implemented the doctor diagnostics flow for Haiku Scribe.
 - `python3 -m pytest tests -v`
 
 All tests passed.
+
+## Follow-up
+
+- `python3 -m pytest tests/test_doctor.py` on 2026-07-05 after adding the web-access contract check: 5 passed.
