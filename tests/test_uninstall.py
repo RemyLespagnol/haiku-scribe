@@ -41,9 +41,15 @@ def test_uninstall_removes_agent_and_guidance_but_keeps_settings_and_user_conten
     claude.mkdir()
     (claude / "CLAUDE.md").write_text("# My guidance\n", encoding="utf-8")
     (claude / "settings.json").write_text(
-        '{"theme":"dark","permissions":{"deny":["Read(./private)"]}}',
+        (
+            '{"theme":"dark","permissions":{"allow":["Edit"],"deny":['
+            '"Read(./private)","Read(./.env)","Read(**/*.pem)"]},"profile":{"name":"me"}}'
+        ),
         encoding="utf-8",
     )
+    backup_root = claude / "backups" / "haiku-scribe"
+    backup_root.mkdir(parents=True)
+    (backup_root / "20240101T000000Z-settings.json.bak").write_text("backup", encoding="utf-8")
 
     assert run_cli("setup", "--home", str(tmp_path)).returncode == 0
 
@@ -56,7 +62,12 @@ def test_uninstall_removes_agent_and_guidance_but_keeps_settings_and_user_conten
     assert "# My guidance" in guidance
     assert "HAIKU_SCRIBE_START" not in guidance
     assert settings["theme"] == "dark"
+    assert settings["profile"]["name"] == "me"
+    assert settings["permissions"]["allow"] == ["Edit"]
     assert "Read(./private)" in settings["permissions"]["deny"]
+    assert "Read(./.env)" not in settings["permissions"]["deny"]
+    assert "Read(**/*.pem)" not in settings["permissions"]["deny"]
+    assert not backup_root.exists()
 
 
 def test_uninstall_is_idempotent(tmp_path: Path) -> None:
