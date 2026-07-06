@@ -61,14 +61,86 @@ def read_pre_tool_use(session_id: str, file_path: Path) -> dict[str, object]:
     return {
         "hook_event_name": "PreToolUse",
         "session_id": session_id,
+        "prompt_id": "p1",
         "cwd": str(file_path.parent),
         "tool_name": "Read",
         "tool_input": {"file_path": str(file_path)},
     }
 
 
+def grep_pre_tool_use(session_id: str, cwd: Path) -> dict[str, object]:
+    return {
+        "hook_event_name": "PreToolUse",
+        "session_id": session_id,
+        "prompt_id": "p1",
+        "cwd": str(cwd),
+        "tool_name": "Grep",
+        "tool_input": {"pattern": "example"},
+    }
+
+
+def prompt_submit(prompt: str, prompt_id: str = "p1") -> dict[str, object]:
+    return {
+        "hook_event_name": "UserPromptSubmit",
+        "session_id": "s1",
+        "prompt_id": prompt_id,
+        "cwd": "/tmp/project",
+        "prompt": prompt,
+    }
+
+
 def nudges_log(tmp_path: Path) -> Path:
     return tmp_path / ".claude" / "haiku-scribe-nudges.jsonl"
+
+
+def test_user_prompt_submit_injects_context_for_broad_prompt(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+
+    result = run_hook(hook_path, prompt_submit("scan the repo architecture"))
+
+    assert result.returncode == 0
+    output = json.loads(result.stdout)
+    assert output["hookSpecificOutput"]["hookEventName"] == "UserPromptSubmit"
+    assert "haiku-scribe" in output["hookSpecificOutput"]["additionalContext"]
+    log_lines = nudges_log(tmp_path).read_text(encoding="utf-8").splitlines()
+    assert len(log_lines) == 1
+    assert json.loads(log_lines[0])["decision"] == "nudge"
+
+
+def test_removed_markers_do_not_trigger_by_themselves(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+
+    for marker in ("log", "repo", "flow", "map", "summarize", "unfamiliar"):
+        result = run_hook(hook_path, prompt_submit(marker, prompt_id=f"prompt-{marker}"))
+        assert result.returncode == 0
+        assert result.stdout == ""
+
+    assert not nudges_log(tmp_path).exists()
+
+
+def test_specific_markers_trigger_nudge(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+
+    for marker in ("scan the repo", "explore the repo", "map the flow", "data flow", "plusieurs fichiers"):
+        result = run_hook(hook_path, prompt_submit(marker, prompt_id=f"prompt-{marker}"))
+        assert result.returncode == 0
+        assert "haiku-scribe" in json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+
+
+def test_pre_tool_hook_reinforces_prompt_nudge_once_for_read_or_grep(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+    small_file = write_file(tmp_path, "small.py", 200)
+
+    assert run_hook(hook_path, prompt_submit("scan the repo architecture")).returncode == 0
+    first = run_hook(hook_path, read_pre_tool_use("s1", small_file))
+    second = run_hook(hook_path, grep_pre_tool_use("s1", tmp_path))
+
+    assert first.returncode == 0
+    assert "haiku-scribe" in json.loads(first.stdout)["hookSpecificOutput"]["additionalContext"]
+    assert second.returncode == 0
+    assert second.stdout == ""
+    decisions = [json.loads(line)["decision"] for line in nudges_log(tmp_path).read_text(encoding="utf-8").splitlines()]
+    assert decisions == ["nudge", "pre_tool_followup"]
 
 
 def test_large_file_triggers_size_nudge(tmp_path: Path) -> None:
@@ -206,24 +278,6 @@ def test_non_read_tool_stays_silent(tmp_path: Path) -> None:
     assert result.stdout == ""
 
 
-def test_user_prompt_submit_event_stays_silent(tmp_path: Path) -> None:
-    hook_path = write_hook(tmp_path)
-
-    result = run_hook(
-        hook_path,
-        {
-            "hook_event_name": "UserPromptSubmit",
-            "session_id": "s1",
-            "cwd": str(tmp_path),
-            "prompt": "scan the repo architecture",
-        },
-    )
-
-    assert result.returncode == 0
-    assert result.stdout == ""
-    assert not nudges_log(tmp_path).exists()
-
-
 def test_missing_file_stays_silent(tmp_path: Path) -> None:
     hook_path = write_hook(tmp_path)
 
@@ -241,10 +295,10 @@ def test_prototype_hooks_install_is_idempotent(tmp_path: Path) -> None:
     assert first.returncode == 0
     assert second.returncode == 0
     settings = json.loads((tmp_path / ".claude" / "settings.json").read_text(encoding="utf-8"))
-    assert "UserPromptSubmit" not in settings["hooks"]
+    assert len(settings["hooks"]["UserPromptSubmit"]) == 1
     pre_tool_groups = settings["hooks"]["PreToolUse"]
     assert len(pre_tool_groups) == 1
-    assert pre_tool_groups[0]["matcher"] == "Read"
+    assert pre_tool_groups[0]["matcher"] == "Read|Grep"
     assert pre_tool_groups[0]["hooks"][0]["command"].endswith("haiku-scribe-v1-2-nudge.py")
     assert (tmp_path / ".claude" / "hooks" / "haiku-scribe-v1-2-nudge.py").exists()
 
@@ -323,7 +377,10 @@ def test_setup_migrates_legacy_v1_2_layout(tmp_path: Path) -> None:
     assert result.returncode == 0
     settings = json.loads(settings_path.read_text(encoding="utf-8"))
     prompt_groups = settings["hooks"]["UserPromptSubmit"]
-    assert prompt_groups == [{"matcher": "", "hooks": [{"type": "command", "command": "echo keep"}]}]
+    assert prompt_groups == [
+        {"matcher": "", "hooks": [{"type": "command", "command": "echo keep"}]},
+        {"matcher": "", "hooks": [{"type": "command", "command": legacy_command}]},
+    ]
     pre_tool_groups = settings["hooks"]["PreToolUse"]
     assert len(pre_tool_groups) == 1
-    assert pre_tool_groups[0]["matcher"] == "Read"
+    assert pre_tool_groups[0]["matcher"] == "Read|Grep"

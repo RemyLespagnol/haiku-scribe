@@ -8,29 +8,30 @@ from haiku_scribe.contracts import (
 )
 
 
-def test_guidance_defaults_to_direct_reads() -> None:
+def test_guidance_classifies_before_raw_context() -> None:
     guidance = render_guidance_block()
 
     assert GUIDANCE_START in guidance
     assert GUIDANCE_END in guidance
-    assert "Default: read directly." in guidance
+    assert "Before loading raw repository context, classify remaining work." in guidance
     assert "Compact discovery tools may be used first" in guidance
 
 
-def test_guidance_requires_both_conditions_to_delegate() -> None:
+def test_guidance_defines_broad_context_and_anti_double_read() -> None:
     guidance = render_guidance_block()
 
-    assert "Delegate to `haiku-scribe` only when both hold:" in guidance
-    assert "overflowing or dominating the main context window" in guidance
-    assert "structured extraction is enough to finish the task" in guidance
-    assert "4+ files;" not in guidance
+    assert "Use `haiku-scribe` when remaining work is broad context gathering:" in guidance
+    assert "4+ files;" in guidance
+    assert "large files;" in guidance
+    assert "architecture review, flow mapping, pattern audit, unfamiliar-area exploration;" in guidance
+    assert "Avoid the costly double-read pattern" in guidance
 
 
 def test_guidance_states_anti_double_read_rule() -> None:
     guidance = render_guidance_block()
 
-    assert "Anti-double-read rule:" in guidance
-    assert "costs more than either option alone" in guidance
+    assert "If the task needs exact, line-level detail immediately, read directly" in guidance
+    assert "do not delegate and then re-read the same raw source." in guidance
 
 
 def test_guidance_separates_evidence_gathering_from_final_judgment() -> None:
@@ -61,13 +62,14 @@ def test_guidance_stays_static_and_non_enforcing() -> None:
     assert "block direct reads" not in guidance.lower()
 
 
-def test_agent_description_carries_massive_and_substitutable_criteria() -> None:
+def test_agent_description_carries_context_routing_boundary_and_cost_caution() -> None:
     agent = render_agent_markdown()
 
-    assert "material is massive enough to risk overflowing or dominating" in agent
-    assert "structured extraction is enough to finish the task" in agent
-    assert "read directly instead of delegating then re-reading" in agent
-    assert "4+ files" not in agent
+    assert "Use when remaining work is broad context gathering:" in agent
+    assert "4+ files, large files, directory/repo survey" in agent
+    assert "architecture review, flow mapping, pattern audit" in agent
+    assert "Skip small focused reads:" in agent
+    assert "Avoid delegating when exact line-by-line detail is needed immediately" in agent
 
 
 def test_agent_tools_remain_read_only() -> None:
@@ -105,4 +107,4 @@ def test_agent_response_shape_includes_structured_extraction() -> None:
     agent = render_agent_markdown()
 
     assert "### Structured Extraction" in agent
-    assert "The main session must be able to answer without re-reading the source." in agent
+    assert "The main session should not need to re-read broad raw context" in agent

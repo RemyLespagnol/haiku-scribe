@@ -31,6 +31,34 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
+BROAD_PROMPT_MARKERS = (
+    "architecture",
+    "audit",
+    "cartographie",
+    "data flow",
+    "explore the repo",
+    "large file",
+    "map the flow",
+    "mapping",
+    "plusieurs fichiers",
+    "scan the repo",
+    "transcript",
+)
+
+NUDGE = (
+    "Haiku Scribe nudge: this prompt looks like broad context gathering. "
+    "Before raw repository reads/searches, consider delegating reconnaissance "
+    "to the `haiku-scribe` subagent. Ask it for an extraction useful enough "
+    "to avoid rereading everything, then verify only focused evidence directly."
+)
+
+PRE_TOOL_NUDGE = (
+    "Haiku Scribe follow-up: this prompt was already flagged as broad context "
+    "gathering. Before continuing with direct Read/Grep exploration, use "
+    "the `haiku-scribe` subagent for reconnaissance unless this is now a small "
+    "focused read. Avoid delegating and then rereading the same raw source."
+)
+
 DEFAULT_SIZE_THRESHOLD_BYTES = 256_000
 
 NUDGE_TEMPLATE = (
@@ -84,20 +112,110 @@ def already_nudged(events: list[dict], session_id: object, file_path: str) -> bo
     )
 
 
+def has_followup(events: list[dict], session_id: object, prompt_id: object) -> bool:
+    return any(
+        event.get("session_id") == session_id
+        and event.get("prompt_id") == prompt_id
+        and event.get("decision") == "pre_tool_followup"
+        for event in events
+    )
+
+
+def has_initial_nudge(events: list[dict], session_id: object, prompt_id: object) -> bool:
+    return any(
+        event.get("session_id") == session_id
+        and event.get("prompt_id") == prompt_id
+        and event.get("decision") == "nudge"
+        for event in events
+    )
+
+
 def main() -> int:
     if os.environ.get("HAIKU_SCRIBE_HOOKS") == "off":
         return 0
     payload = json.load(sys.stdin)
     if should_skip_payload(payload):
         return 0
-    if payload.get("hook_event_name") == "PreToolUse":
+    event_name = payload.get("hook_event_name")
+    if event_name == "PreToolUse":
         return handle_pre_tool_use(payload)
+    if event_name == "UserPromptSubmit":
+        return handle_user_prompt_submit(payload)
+    return 0
+
+
+def handle_user_prompt_submit(payload: dict) -> int:
+    prompt = str(payload.get("prompt", "")).lower()
+    matched = [marker for marker in BROAD_PROMPT_MARKERS if marker in prompt]
+    if not matched:
+        return 0
+
+    claude_dir = Path(__file__).resolve().parents[1]
+    log_path = claude_dir / "haiku-scribe-nudges.jsonl"
+    append_event(
+        log_path,
+        {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "decision": "nudge",
+            "reason": "broad_prompt_marker",
+            "matched": matched,
+            "session_id": payload.get("session_id"),
+            "prompt_id": payload.get("prompt_id"),
+            "cwd": payload.get("cwd"),
+        },
+    )
+    print(
+        json.dumps(
+            {
+                "suppressOutput": True,
+                "hookSpecificOutput": {
+                    "hookEventName": "UserPromptSubmit",
+                    "additionalContext": NUDGE,
+                },
+            }
+        )
+    )
     return 0
 
 
 def handle_pre_tool_use(payload: dict) -> int:
-    if payload.get("tool_name") != "Read":
+    tool_name = payload.get("tool_name")
+    claude_dir = Path(__file__).resolve().parents[1]
+    log_path = claude_dir / "haiku-scribe-nudges.jsonl"
+    events = list(iter_events(log_path))
+    session_id = payload.get("session_id")
+    prompt_id = payload.get("prompt_id")
+
+    if has_initial_nudge(events, session_id, prompt_id):
+        if tool_name in {"Read", "Grep"} and not has_followup(events, session_id, prompt_id):
+            append_event(
+                log_path,
+                {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "decision": "pre_tool_followup",
+                    "reason": "direct_tool_after_nudge",
+                    "session_id": session_id,
+                    "prompt_id": prompt_id,
+                    "cwd": payload.get("cwd"),
+                    "tool_name": tool_name,
+                },
+            )
+            print(
+                json.dumps(
+                    {
+                        "suppressOutput": True,
+                        "hookSpecificOutput": {
+                            "hookEventName": "PreToolUse",
+                            "additionalContext": PRE_TOOL_NUDGE,
+                        },
+                    }
+                )
+            )
         return 0
+
+    if tool_name != "Read":
+        return 0
+
     tool_input = payload.get("tool_input")
     file_path = str(tool_input.get("file_path") or "") if isinstance(tool_input, dict) else ""
     if not file_path:
@@ -110,10 +228,7 @@ def handle_pre_tool_use(payload: dict) -> int:
     if size <= threshold:
         return 0
 
-    claude_dir = Path(__file__).resolve().parents[1]
-    log_path = claude_dir / "haiku-scribe-nudges.jsonl"
-    session_id = payload.get("session_id")
-    if already_nudged(list(iter_events(log_path)), session_id, file_path):
+    if already_nudged(events, session_id, file_path):
         return 0
 
     append_event(
@@ -162,7 +277,7 @@ def setup_prototype_hooks(home: Path, dry_run: bool = False) -> PrototypeHooksRe
     command = hook_command_for(hook_path)
     planned = [
         f"Would write {hook_path}",
-        f"Would merge PreToolUse size-nudge hook into {paths.settings_path}",
+        f"Would merge UserPromptSubmit and PreToolUse nudge hooks into {paths.settings_path}",
     ]
     if dry_run:
         return PrototypeHooksResult(planned=planned, written=[], removed=[])
@@ -221,8 +336,8 @@ def merge_v1_2_hook(settings: dict[str, Any], command: str) -> dict[str, Any]:
     if not isinstance(hooks, dict):
         raise ValueError("settings.hooks must be a JSON object")
 
-    # Migrate any prior registration of this command (v1.2 keyword-nudge layout:
-    # UserPromptSubmit group + PreToolUse matcher Read|Grep) before re-adding.
+    # Migrate any prior registration of this command before re-adding the
+    # current V1.2 layout.
     for event_name in ("UserPromptSubmit", "PreToolUse"):
         groups = hooks.get(event_name)
         if isinstance(groups, list):
@@ -236,13 +351,24 @@ def merge_v1_2_hook(settings: dict[str, Any], command: str) -> dict[str, Any]:
             else:
                 hooks.pop(event_name, None)
 
+    prompt_groups = hooks.setdefault("UserPromptSubmit", [])
+    if not isinstance(prompt_groups, list):
+        raise ValueError("settings.hooks.UserPromptSubmit must be a JSON array")
+    _append_group_once(
+        prompt_groups,
+        {
+            "matcher": "",
+            "hooks": [{"type": "command", "command": command}],
+        },
+    )
+
     pre_tool_groups = hooks.setdefault("PreToolUse", [])
     if not isinstance(pre_tool_groups, list):
         raise ValueError("settings.hooks.PreToolUse must be a JSON array")
     _append_group_once(
         pre_tool_groups,
         {
-            "matcher": "Read",
+            "matcher": "Read|Grep",
             "hooks": [{"type": "command", "command": command}],
         },
     )

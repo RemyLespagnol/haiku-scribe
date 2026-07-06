@@ -63,7 +63,7 @@ def test_setup_installs_agent_guidance_and_settings(tmp_path: Path) -> None:
     assert "model: haiku" in agent.read_text(encoding="utf-8")
     guidance_text = guidance.read_text(encoding="utf-8")
     assert "HAIKU_SCRIBE_START" in guidance_text
-    assert "Default: read directly." in guidance_text
+    assert "Use `haiku-scribe` when remaining work is broad context gathering" in guidance_text
     parsed = json.loads(settings.read_text(encoding="utf-8"))
     assert "Read(**/*credential*)" in parsed["permissions"]["deny"]
 
@@ -78,7 +78,7 @@ def test_setup_is_idempotent(tmp_path: Path) -> None:
     settings = json.loads((tmp_path / ".claude" / "settings.json").read_text(encoding="utf-8"))
     assert guidance.count("HAIKU_SCRIBE_START") == 1
     assert settings["permissions"]["deny"].count("Read(**/*credential*)") == 1
-    assert "UserPromptSubmit" not in settings["hooks"]
+    assert len(settings["hooks"]["UserPromptSubmit"]) == 1
     assert len(settings["hooks"]["PreToolUse"]) == 1
 
 
@@ -93,9 +93,11 @@ def test_setup_installs_v1_2_hooks_by_default(tmp_path: Path) -> None:
     settings = json.loads(settings_path.read_text(encoding="utf-8"))
     command = settings["haiku_scribe"]["owned_v1_2_nudge_hook_command"]
     assert command.endswith("haiku-scribe-v1-2-nudge.py")
-    assert "UserPromptSubmit" not in settings["hooks"]
+    assert settings["hooks"]["UserPromptSubmit"] == [
+        {"matcher": "", "hooks": [{"type": "command", "command": command}]}
+    ]
     assert settings["hooks"]["PreToolUse"] == [
-        {"matcher": "Read", "hooks": [{"type": "command", "command": command}]}
+        {"matcher": "Read|Grep", "hooks": [{"type": "command", "command": command}]}
     ]
 
 
@@ -175,7 +177,7 @@ def test_uninstall_removes_v1_2_hooks_but_preserves_user_hooks(tmp_path: Path) -
     assert not (tmp_path / ".claude" / "hooks" / "haiku-scribe-v1-2-nudge.py").exists()
 
 
-def test_setup_does_not_add_to_user_prompt_submit(tmp_path: Path) -> None:
+def test_setup_preserves_user_prompt_submit_when_adding_owned_hook(tmp_path: Path) -> None:
     settings_path = tmp_path / ".claude" / "settings.json"
     settings_path.parent.mkdir(parents=True)
     settings_path.write_text(
@@ -198,8 +200,10 @@ def test_setup_does_not_add_to_user_prompt_submit(tmp_path: Path) -> None:
 
     assert result.returncode == 0
     settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    command = settings["haiku_scribe"]["owned_v1_2_nudge_hook_command"]
     assert settings["hooks"]["UserPromptSubmit"] == [
-        {"matcher": "", "hooks": [{"type": "command", "command": "echo keep"}]}
+        {"matcher": "", "hooks": [{"type": "command", "command": "echo keep"}]},
+        {"matcher": "", "hooks": [{"type": "command", "command": command}]},
     ]
 
 
@@ -217,13 +221,13 @@ def test_doctor_fails_when_v1_2_pre_tool_matcher_wrong(tmp_path: Path) -> None:
     assert run_cli("setup", "--home", str(tmp_path)).returncode == 0
     settings_path = tmp_path / ".claude" / "settings.json"
     settings = json.loads(settings_path.read_text(encoding="utf-8"))
-    settings["hooks"]["PreToolUse"][0]["matcher"] = "Read|Grep"
+    settings["hooks"]["PreToolUse"][0]["matcher"] = "Read"
     settings_path.write_text(json.dumps(settings), encoding="utf-8")
 
     result = run_cli("doctor", "--home", str(tmp_path))
 
     assert result.returncode == 1
-    assert "missing V1.2 PreToolUse hook with matcher Read" in result.stdout
+    assert "missing V1.2 PreToolUse hook with matcher Read|Grep" in result.stdout
 
 
 def test_doctor_fails_when_v1_2_hook_ownership_missing(tmp_path: Path) -> None:

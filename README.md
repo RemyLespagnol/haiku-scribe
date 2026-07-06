@@ -41,7 +41,7 @@ The implementation includes:
 - a generated `~/.claude/agents/haiku-scribe.md` subagent;
 - a managed Haiku Scribe guidance block in `~/.claude/CLAUDE.md`;
 - merged read-deny rules in `~/.claude/settings.json`;
-- V1.2 prompt nudge hooks under `~/.claude/hooks/`;
+- V1.2 prompt nudge hooks under `~/.claude/hooks/`, with a size-gated fallback for very large direct reads;
 - ownership metadata for deny rules and V1.2 hook entries;
 - backups before mutating existing Claude Code files;
 - dry-run support for setup and uninstall;
@@ -214,6 +214,9 @@ remove only content it owns.
 ## When To Use It
 
 Use Haiku Scribe before the main Claude session loads broad raw context.
+Do not delegate and then re-read the same raw source broadly; either ask for a
+structured extraction that is useful enough to continue, or read directly when
+exact line-level detail is the real task.
 
 Good delegation triggers:
 
