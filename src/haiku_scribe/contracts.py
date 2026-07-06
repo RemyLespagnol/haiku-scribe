@@ -77,22 +77,39 @@ def render_guidance_block() -> str:
     return f"""{GUIDANCE_START}
 ## Cost-aware Scribe routing
 
-For direct bulk reading, use `haiku-scribe`.
+Before broad code exploration, call `haiku-scribe` first.
 
-Use `haiku-scribe` when:
-- reading 3+ files;
-- reading a file likely over 400 lines;
-- mapping a flow across files;
-- summarizing logs, bundles, generated JavaScript, transcripts, or large docs;
-- extracting evidence before reasoning.
+Mandatory triggers:
+- You are about to read 3+ files.
+- You are about to read a file likely over 400 lines mainly for orientation.
+- You need to map a flow across files.
+- You need to summarize logs, transcripts, generated bundles, large docs, or noisy tool output.
+- You need evidence before debugging, review, architecture, or scope reasoning.
+- The user asks to review, analyze, explore, understand, audit, map, or find code across an unfamiliar area.
+
+Workflow:
+1. Haiku Scribe gathers compact evidence.
+2. Main Claude performs focused direct reads on the highest-value locations.
+3. Main Claude makes final decisions, edits, commits, and user-facing conclusions.
+
+Haiku Scribe may gather evidence for tasks that eventually require debugging, architecture, scope, or review judgment. These exclusions apply to final judgment, not pre-analysis.
 
 Do not delegate:
-- final debugging or root-cause conclusions;
+- final debugging root-cause conclusions;
 - architecture decisions;
-- security, authentication, authorization, or permission-sensitive code;
+- security, authentication, authorization, or permission-sensitive conclusions;
 - precise edits;
 - final PR summaries;
 - commits.
+
+Red flags:
+- "I will just inspect a few files first" means call `haiku-scribe`.
+- "I need context first" means call `haiku-scribe`.
+- "This probably only needs a quick grep" is not a reason to skip `haiku-scribe` when a mandatory trigger applies.
+
+Do not read files yourself first and then decide whether Haiku Scribe was needed.
+
+If `haiku-scribe` is unavailable, say so explicitly and continue manually.
 
 Main Claude must verify important claims before editing.
 {GUIDANCE_END}
