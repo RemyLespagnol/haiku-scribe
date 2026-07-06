@@ -19,7 +19,7 @@ DEFAULT_DENY_RULES: tuple[str, ...] = (
 def render_agent_markdown() -> str:
     return """---
 name: haiku-scribe
-description: Read-only context compression worker for bulk file reading, large-file orientation, log or transcript summarization, generated output summarization, cross-file flow mapping, and evidence extraction. Use before loading broad raw context. Do not use for final reasoning, edits, security conclusions, architecture decisions, commits, or public summaries.
+description: Read-only context compression worker. Use when remaining work is broad context gathering: 4+ files, large files, directory/repo survey, logs, generated output, transcripts, architecture review, flow mapping, pattern audit, unfamiliar-area exploration, or evidence extraction before broad reasoning. Skip for small focused reads: 3 or fewer small files with no directory reads, shell search, logs, generated output, or cross-layer mapping. Do not use for final reasoning, edits, security conclusions, architecture decisions, commits, or public summaries.
 model: haiku
 tools: Read, Glob, Grep
 ---
@@ -75,30 +75,34 @@ Unknown or risk that affects confidence.
 
 def render_guidance_block() -> str:
     return f"""{GUIDANCE_START}
-## Cost-aware Scribe routing
+## Cost-aware Context Routing
 
-Before broad code exploration, call `haiku-scribe` first.
+Before loading raw repository context, classify the remaining work.
 
-Indexed repositories:
-- For indexed repositories, use CodeGraph first for symbol and file discovery.
-- If CodeGraph narrows the work to 2 or fewer direct file reads, continue in the main session.
-- If broad reading remains after CodeGraph, call `haiku-scribe` before direct Read, Grep, or shell exploration.
+Compact discovery tools may be used first if they return metadata, symbols, call paths, or file candidates instead of raw file contents.
 
-Non-indexed repositories:
-- Call `haiku-scribe` before broad Read, Grep, or shell exploration.
+Use the main session directly only when the remaining work is a small focused read:
+- 3 or fewer small files;
+- no directory reads;
+- no shell search over many files;
+- no logs, bundles, generated output, transcripts, or large docs;
+- no architecture, flow, or cross-layer mapping.
 
-Mandatory triggers:
-- You are about to read 3+ files.
-- You are about to read a file likely over 400 lines mainly for orientation.
-- You need to map a flow across files.
-- You need to summarize logs, transcripts, generated bundles, large docs, or noisy tool output.
-- You need evidence before debugging, review, architecture, or scope reasoning.
-- The user asks to review, analyze, explore, understand, audit, map, or find code across an unfamiliar area.
+Use `haiku-scribe` when the remaining work is broad context gathering:
+- 4+ files;
+- large files;
+- directory or repository survey;
+- logs, bundles, generated output, transcripts, or large docs;
+- architecture review, flow mapping, pattern audit, unfamiliar-area exploration;
+- evidence extraction before broad reasoning.
 
 Workflow:
-1. Haiku Scribe gathers compact evidence.
-2. Main Claude performs focused direct reads on the highest-value locations.
-3. Main Claude makes final decisions, edits, commits, and user-facing conclusions.
+1. Use compact discovery if available.
+2. Classify the remaining work as small focused read or broad context gathering.
+3. If small, main session reads directly.
+4. If broad, call `haiku-scribe` before raw Read, Grep, or shell exploration.
+5. Main Claude performs focused direct reads on the highest-value locations.
+6. Main Claude makes final decisions, edits, commits, and user-facing conclusions.
 
 Haiku Scribe may gather evidence for tasks that eventually require debugging, architecture, scope, or review judgment. These exclusions apply to final judgment, not pre-analysis.
 
@@ -110,13 +114,7 @@ Do not delegate:
 - final PR summaries;
 - commits.
 
-Red flags:
-- "I will just inspect a few files first" means call `haiku-scribe`.
-- "I need context first" means call `haiku-scribe`.
-- "This probably only needs a quick grep" is not a reason to skip `haiku-scribe` when a mandatory trigger applies.
-
-Do not read files yourself first and then decide whether Haiku Scribe was needed.
-If you already crossed a mandatory trigger without `haiku-scribe`, stop and call it immediately.
+If you already crossed into broad context gathering without `haiku-scribe`, stop and call it immediately.
 Do not ask the user whether to recover.
 
 If `haiku-scribe` is unavailable, say so explicitly and continue manually.

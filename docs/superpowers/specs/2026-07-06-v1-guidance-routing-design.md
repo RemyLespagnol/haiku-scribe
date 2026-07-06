@@ -1,19 +1,20 @@
 # Haiku Scribe V1 Guidance Routing Design
 
 Date: 2026-07-06
-Status: Approved for planning
+Status: Implemented, revised after local trials
 Parent roadmap: `docs/superpowers/specs/2026-07-04-haiku-scribe-roadmap-design.md`
 
 ## Objective
 
-Make the installed `CLAUDE.md` guidance more effective at causing the main Claude session to invoke `haiku-scribe` before broad code exploration.
+Make the installed `CLAUDE.md` guidance and `haiku-scribe` agent listing more effective at causing the main Claude session to invoke `haiku-scribe` before broad raw-context gathering.
 
-The observed failure mode is that the current guidance says to "use" Haiku Scribe in bulk-reading cases, but an agent can treat that as optional and inspect files directly first. The revised guidance must express Haiku Scribe as a mandatory pre-exploration routing step for defined triggers.
+The observed failure mode is that guidance which says to "use" Haiku Scribe in bulk-reading cases can still be treated as optional. Local trials also showed that tool-specific wording such as `CodeGraph` versus `Read/Grep` creates priority conflicts. The revised guidance should classify the remaining work by shape, not by tool brand.
 
 ## Scope
 
 In scope:
 - Update the guidance block rendered by `haiku-scribe setup`.
+- Update the short `haiku-scribe` agent description rendered by setup, because that description appears in the agent listing when Claude chooses subagents.
 - Keep the change inside the existing owned `<!-- HAIKU_SCRIBE_START -->` / `<!-- HAIKU_SCRIBE_END -->` block.
 - Preserve the installed subagent's read-only contract.
 - Preserve setup idempotency, backups, doctor behavior, uninstall ownership, and settings merge behavior.
@@ -31,22 +32,24 @@ Out of scope:
 
 ## Design
 
-The product should keep V1 boring: setup writes a static guidance block to the user's Claude guidance file. The improvement is copy and structure, not runtime machinery.
+The product should keep V1 boring: setup writes a static guidance block to the user's Claude guidance file and a stronger short description to the `haiku-scribe` agent frontmatter. The improvement is copy and structure, not runtime machinery.
 
-The new block should use imperative routing language:
-- "Before reading 3+ files, call `haiku-scribe` first."
-- "Do not read files yourself first and then decide whether Haiku Scribe was needed."
-- "Use Haiku Scribe for evidence gathering; main Claude keeps final judgment."
+The new block should use tool-agnostic routing language:
+- classify remaining work before loading raw repository context;
+- allow compact discovery tools first when they return metadata, symbols, call paths, or file candidates instead of raw file contents;
+- allow direct main-session reads only for a small focused read;
+- route broad context gathering to `haiku-scribe`;
+- keep final judgment, edits, commits, and user-facing conclusions in the main session.
 
 The block should be organized into these sections:
-- Mandatory routing.
-- Triggers.
+- Context routing.
+- Small focused read criteria.
+- Broad context gathering criteria.
 - Workflow.
 - What Haiku Scribe may and may not do.
-- Red flags.
 - Fallback if unavailable.
 
-This shape mirrors the successful pattern from process skills: explicit `BEFORE` language, recognizable triggers, sequencing, and anti-rationalization red flags.
+This shape avoids tool-specific precedence arguments. `CodeGraph`, Token Optimizer checkpoints, project memory, grep, or future discovery tools are all just compact discovery if they do not load broad raw repository context.
 
 ## Delegation Boundary
 
@@ -74,33 +77,50 @@ The important clarification is that these exclusions apply to final judgment, no
 The exact copy may be refined during implementation, but it should preserve this behavior:
 
 ```md
-## Cost-aware Scribe routing
+## Cost-aware Context Routing
 
-Before broad code exploration, call `haiku-scribe` first.
+Before loading raw repository context, classify the remaining work.
 
-Mandatory triggers:
-- You are about to read 3+ files.
-- You are about to read a file likely over 400 lines mainly for orientation.
-- You need to map a flow across files.
-- You need to summarize logs, transcripts, generated bundles, large docs, or noisy tool output.
-- You need evidence before debugging, review, architecture, or scope reasoning.
-- The user asks to review, analyze, explore, understand, audit, map, or find code across an unfamiliar area.
+Compact discovery tools may be used first if they return metadata, symbols, call paths, or file candidates instead of raw file contents.
+
+Use the main session directly only when the remaining work is a small focused read:
+- 3 or fewer small files;
+- no directory reads;
+- no shell search over many files;
+- no logs, bundles, generated output, transcripts, or large docs;
+- no architecture, flow, or cross-layer mapping.
+
+Use `haiku-scribe` when the remaining work is broad context gathering:
+- 4+ files;
+- large files;
+- directory or repository survey;
+- logs, bundles, generated output, transcripts, or large docs;
+- architecture review, flow mapping, pattern audit, unfamiliar-area exploration;
+- evidence extraction before broad reasoning.
 
 Workflow:
-1. Haiku Scribe gathers compact evidence.
-2. Main Claude performs focused direct reads on the highest-value locations.
-3. Main Claude makes final decisions, edits, commits, and user-facing conclusions.
+1. Use compact discovery if available.
+2. Classify the remaining work as small focused read or broad context gathering.
+3. If small, main session reads directly.
+4. If broad, call `haiku-scribe` before raw Read, Grep, or shell exploration.
+5. Main Claude performs focused direct reads on the highest-value locations.
+6. Main Claude makes final decisions, edits, commits, and user-facing conclusions.
+```
 
-Do not read files yourself first and then decide whether Haiku Scribe was needed.
+The agent frontmatter description should carry the same compact boundary because the agent listing is a high-salience decision point:
+
+```md
+Use when remaining work is broad context gathering: 4+ files, large files, directory/repo survey, logs, generated output, transcripts, architecture review, flow mapping, pattern audit, unfamiliar-area exploration, or evidence extraction before broad reasoning. Skip for small focused reads: 3 or fewer small files with no directory reads, shell search, logs, generated output, or cross-layer mapping.
 ```
 
 ## Testing
 
 Tests should assert:
-- `render_guidance_block()` contains mandatory `BEFORE` or equivalent pre-exploration language.
-- The rendered guidance includes the 3+ files trigger.
-- The rendered guidance includes the "do not read files yourself first" rule.
+- `render_guidance_block()` contains context classification language.
+- The rendered guidance defines small focused reads.
+- The rendered guidance defines broad context gathering.
 - The rendered guidance clarifies evidence gathering versus final judgment.
+- `render_agent_markdown()` carries the broad-versus-small routing boundary in its frontmatter description.
 - Existing setup tests still pass without changing file ownership boundaries.
 - Existing doctor and uninstall tests still pass.
 
@@ -108,6 +128,7 @@ Tests should assert:
 
 This change is done when:
 - `haiku-scribe setup` installs stronger guidance into the owned block.
+- `haiku-scribe setup` installs the stronger agent description.
 - Existing user guidance outside the owned block is preserved.
 - Re-running setup remains idempotent.
 - Uninstall still removes only Haiku Scribe-owned configuration.
@@ -116,6 +137,22 @@ This change is done when:
 
 ## Non-Goals And Risks
 
-This design intentionally does not solve every missed invocation. Static guidance can still be ignored by an agent. That is acceptable for V1 because the roadmap reserves audit, nudges, and enforcement for later phases after the baseline is stable.
+This design intentionally does not solve every missed invocation. Static guidance can still be ignored by an agent. Local trials confirmed this limit: even when global guidance loaded and the agent listing included stronger copy, Claude still sometimes used compact discovery, then crossed into broad raw reads without calling `haiku-scribe`.
 
-The main risk is over-broad wording that causes Haiku Scribe to be invoked for tiny obvious edits. The trigger language should stay tied to bulk reading, large artifacts, flow mapping, and evidence gathering.
+The main risk is over-broad wording that causes Haiku Scribe to be invoked for tiny obvious edits. The routing language should stay tied to bulk reading, large artifacts, directory surveys, flow mapping, pattern audits, and evidence gathering.
+
+## V1.1 Decision Note
+
+The original roadmap placed full audit-only instrumentation in v1.1 before prompt nudges. The local trials already produced enough evidence to justify a smaller next step:
+
+- global guidance stacks correctly;
+- the agent listing description is visible;
+- Token Optimizer checkpoints can bypass routing, but they are not the only cause;
+- repeated failures follow the same pattern: broad task, compact discovery, then raw direct reads without `haiku-scribe`.
+
+Therefore, defer the full v1.1 audit/report product. The next useful phase should be a v1.2-lite prompt nudge with micro-audit:
+
+- detect likely broad context gathering after compact discovery;
+- nudge before or immediately after raw reads/searches cross the broad threshold;
+- log only minimal local events needed to measure false positives and spam;
+- avoid blocking behavior.

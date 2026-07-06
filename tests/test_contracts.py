@@ -1,39 +1,48 @@
 from __future__ import annotations
 
-from haiku_scribe.contracts import GUIDANCE_END, GUIDANCE_START, render_guidance_block
+from haiku_scribe.contracts import (
+    GUIDANCE_END,
+    GUIDANCE_START,
+    render_agent_markdown,
+    render_guidance_block,
+)
 
 
-def test_guidance_requires_scribe_before_bulk_exploration() -> None:
+def test_guidance_classifies_remaining_context_work() -> None:
     guidance = render_guidance_block()
 
     assert GUIDANCE_START in guidance
     assert GUIDANCE_END in guidance
-    assert "Before broad code exploration, call `haiku-scribe` first." in guidance
-    assert "You are about to read 3+ files." in guidance
-    assert "Do not read files yourself first" in guidance
+    assert "Before loading raw repository context, classify the remaining work." in guidance
+    assert "Compact discovery tools may be used first" in guidance
+    assert "Use the main session directly only when the remaining work is a small focused read:" in guidance
+    assert "Use `haiku-scribe` when the remaining work is broad context gathering:" in guidance
 
 
 def test_guidance_separates_evidence_gathering_from_final_judgment() -> None:
     guidance = render_guidance_block()
 
-    assert "Haiku Scribe gathers compact evidence." in guidance
+    assert "Use `haiku-scribe` when the remaining work is broad context gathering:" in guidance
+    assert "evidence extraction before broad reasoning." in guidance
     assert "Main Claude performs focused direct reads" in guidance
     assert "Main Claude makes final decisions, edits, commits, and user-facing conclusions." in guidance
     assert "These exclusions apply to final judgment, not pre-analysis." in guidance
 
 
-def test_guidance_uses_codegraph_before_scribe_for_indexed_repositories() -> None:
+def test_guidance_defines_small_focused_reads_and_broad_context() -> None:
     guidance = render_guidance_block()
 
-    assert "For indexed repositories, use CodeGraph first for symbol and file discovery." in guidance
-    assert "If CodeGraph narrows the work to 2 or fewer direct file reads, continue in the main session." in guidance
-    assert "If broad reading remains after CodeGraph, call `haiku-scribe` before direct Read, Grep, or shell exploration." in guidance
+    assert "3 or fewer small files;" in guidance
+    assert "no directory reads;" in guidance
+    assert "no shell search over many files;" in guidance
+    assert "4+ files;" in guidance
+    assert "architecture review, flow mapping, pattern audit, unfamiliar-area exploration;" in guidance
 
 
 def test_guidance_recovers_from_skipped_scribe_gate() -> None:
     guidance = render_guidance_block()
 
-    assert "If you already crossed a mandatory trigger without `haiku-scribe`, stop and call it immediately." in guidance
+    assert "If you already crossed into broad context gathering without `haiku-scribe`, stop and call it immediately." in guidance
     assert "Do not ask the user whether to recover." in guidance
 
 
@@ -43,3 +52,13 @@ def test_guidance_stays_static_and_non_enforcing() -> None:
     assert "hooks" not in guidance.lower()
     assert "soft enforcement" not in guidance.lower()
     assert "block direct reads" not in guidance.lower()
+
+
+def test_agent_description_carries_context_routing_boundary() -> None:
+    agent = render_agent_markdown()
+
+    assert "Use when remaining work is broad context gathering:" in agent
+    assert "4+ files, large files, directory/repo survey" in agent
+    assert "architecture review, flow mapping, pattern audit" in agent
+    assert "Skip for small focused reads:" in agent
+    assert "3 or fewer small files" in agent

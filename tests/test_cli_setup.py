@@ -62,7 +62,7 @@ def test_setup_installs_agent_guidance_and_settings(tmp_path: Path) -> None:
     assert "model: haiku" in agent.read_text(encoding="utf-8")
     guidance_text = guidance.read_text(encoding="utf-8")
     assert "HAIKU_SCRIBE_START" in guidance_text
-    assert "Before broad code exploration, call `haiku-scribe` first." in guidance_text
+    assert "Before loading raw repository context, classify the remaining work." in guidance_text
     parsed = json.loads(settings.read_text(encoding="utf-8"))
     assert "Read(**/*credential*)" in parsed["permissions"]["deny"]
 
