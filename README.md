@@ -41,17 +41,17 @@ The implementation includes:
 - a generated `~/.claude/agents/haiku-scribe.md` subagent;
 - a managed Haiku Scribe guidance block in `~/.claude/CLAUDE.md`;
 - merged read-deny rules in `~/.claude/settings.json`;
-- ownership metadata for deny rules added by Haiku Scribe;
+- V1.2 prompt nudge hooks under `~/.claude/hooks/`;
+- ownership metadata for deny rules and V1.2 hook entries;
 - backups before mutating existing Claude Code files;
 - dry-run support for setup and uninstall;
-- `doctor` checks for missing files, unsafe agent drift, missing guidance, and
-  missing deny rules;
+- `doctor` checks for missing files, unsafe agent drift, missing guidance, missing deny rules, and V1.2 hooks;
 - focused pytest coverage for setup, doctor, uninstall, settings merge,
-  markdown block handling, and the agent contract.
+  markdown block handling, the agent contract, and hook behavior.
 
 Still out of scope:
 
-- automatic invocation hooks;
+- hard blocking of direct reads;
 - prompt rewriting or enforcement loops;
 - team or global rollout;
 - Claude Code plugin packaging;
@@ -127,6 +127,7 @@ haiku-scribe doctor
 ~/.claude/agents/haiku-scribe.md
 ~/.claude/CLAUDE.md
 ~/.claude/settings.json
+~/.claude/hooks/haiku-scribe-v1-2-nudge.py
 ```
 
 When existing files need to change, backups are written under:

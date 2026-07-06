@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from haiku_scribe.contracts import DEFAULT_DENY_RULES, GUIDANCE_END, GUIDANCE_START
 from haiku_scribe.paths import ClaudePaths
 from haiku_scribe.settings import SettingsError, load_json_object
+from haiku_scribe.v1_2_hooks import hook_command_for, hook_path_for
 
 
 @dataclass(frozen=True)
@@ -47,7 +49,46 @@ def _check_guidance_file(guidance_path: Path) -> list[str]:
     return []
 
 
-def _check_settings_file(settings_path: Path) -> list[str]:
+def _group_has_command(groups: Any, matcher: str, command: str) -> bool:
+    if not isinstance(groups, list):
+        return False
+    expected = {"type": "command", "command": command}
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        if group.get("matcher") != matcher:
+            continue
+        hooks = group.get("hooks")
+        if isinstance(hooks, list) and expected in hooks:
+            return True
+    return False
+
+
+def _check_v1_2_hook(paths: ClaudePaths, settings: dict[str, Any]) -> list[str]:
+    hook_path = hook_path_for(paths)
+    command = hook_command_for(hook_path)
+    failures: list[str] = []
+    if not hook_path.exists():
+        failures.append("missing V1.2 hook script")
+
+    ownership = settings.get("haiku_scribe")
+    if not isinstance(ownership, dict) or ownership.get("owned_v1_2_nudge_hook_command") != command:
+        failures.append("missing V1.2 hook ownership metadata")
+
+    hooks = settings.get("hooks")
+    if not isinstance(hooks, dict):
+        failures.append("settings hooks must be JSON object")
+        return failures
+
+    if not _group_has_command(hooks.get("UserPromptSubmit"), "", command):
+        failures.append("missing V1.2 UserPromptSubmit hook")
+    if not _group_has_command(hooks.get("PreToolUse"), "Read|Grep", command):
+        failures.append("missing V1.2 PreToolUse hook with matcher Read|Grep")
+    return failures
+
+
+def _check_settings_file(paths: ClaudePaths) -> list[str]:
+    settings_path = paths.settings_path
     if not settings_path.exists():
         return ["missing settings file"]
 
@@ -68,6 +109,7 @@ def _check_settings_file(settings_path: Path) -> list[str]:
     for rule in DEFAULT_DENY_RULES:
         if rule not in deny:
             failures.append(f"missing deny rule: {rule}")
+    failures.extend(_check_v1_2_hook(paths, settings))
     return failures
 
 
@@ -76,5 +118,5 @@ def doctor_user(home: Path) -> DoctorResult:
     failures = []
     failures.extend(_check_agent_file(paths.agent_path))
     failures.extend(_check_guidance_file(paths.guidance_path))
-    failures.extend(_check_settings_file(paths.settings_path))
+    failures.extend(_check_settings_file(paths))
     return DoctorResult(ok=not failures, failures=failures)

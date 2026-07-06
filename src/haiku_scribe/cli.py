@@ -8,6 +8,7 @@ from haiku_scribe.doctor import doctor_user
 from haiku_scribe.settings import SettingsError
 from haiku_scribe.setup import setup_user
 from haiku_scribe.uninstall import uninstall_user
+from haiku_scribe.v1_2_hooks import setup_prototype_hooks, uninstall_prototype_hooks
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -24,6 +25,15 @@ def build_parser() -> argparse.ArgumentParser:
     uninstall = subparsers.add_parser("uninstall", help="Remove Haiku Scribe-owned personal configuration")
     uninstall.add_argument("--dry-run", action="store_true", help="Print planned removals without writing files")
     uninstall.add_argument("--home", type=Path, default=Path.home(), help=argparse.SUPPRESS)
+
+    prototype_hooks = subparsers.add_parser("prototype-hooks", help="Experimental V1.2 Claude Code hook prototype")
+    prototype_subparsers = prototype_hooks.add_subparsers(dest="prototype_command", required=True)
+    prototype_setup = prototype_subparsers.add_parser("setup", help="Install experimental prompt nudge hook")
+    prototype_setup.add_argument("--dry-run", action="store_true", help="Print planned changes without writing files")
+    prototype_setup.add_argument("--home", type=Path, default=Path.home(), help=argparse.SUPPRESS)
+    prototype_uninstall = prototype_subparsers.add_parser("uninstall", help="Remove experimental prompt nudge hook")
+    prototype_uninstall.add_argument("--dry-run", action="store_true", help="Print planned removals without writing files")
+    prototype_uninstall.add_argument("--home", type=Path, default=Path.home(), help=argparse.SUPPRESS)
     return parser
 
 
@@ -71,6 +81,40 @@ def main(argv: list[str] | None = None) -> int:
         for path in result.removed:
             print(f"Removed {path}")
         return 0
+
+    if args.command == "prototype-hooks":
+        try:
+            if args.prototype_command == "setup":
+                result = setup_prototype_hooks(args.home, dry_run=args.dry_run)
+                if args.dry_run:
+                    print("Dry run: no files written")
+                    for item in result.planned:
+                        print(item)
+                    return 0
+                for path in result.written:
+                    print(f"Wrote {path}")
+                if not result.written:
+                    print("Prototype hooks already installed")
+                return 0
+
+            if args.prototype_command == "uninstall":
+                result = uninstall_prototype_hooks(args.home, dry_run=args.dry_run)
+                if args.dry_run:
+                    print("Dry run: no files removed")
+                    for item in result.planned:
+                        print(item)
+                    if not result.planned:
+                        print("Nothing to remove")
+                    return 0
+                if not result.removed:
+                    print("Nothing to remove")
+                    return 0
+                for path in result.removed:
+                    print(f"Removed {path}")
+                return 0
+        except (SettingsError, ValueError) as exc:
+            print(f"prototype hooks failed: {exc}", file=sys.stderr)
+            return 1
 
     parser.error(f"unknown command: {args.command}")
     return 2
