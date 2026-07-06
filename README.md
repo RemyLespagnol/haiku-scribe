@@ -1,6 +1,6 @@
 <p align="center">
   <picture>
-    <img src="./logo.png" alt="Haiku Scribe logo" width="500">
+    <img src="./assets/logo.png" alt="Haiku Scribe logo" width="500">
   </picture>
 </p>
 
