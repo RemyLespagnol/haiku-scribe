@@ -1,5 +1,23 @@
 # Haiku Scribe V1.2 Default Hooks Benchmark
 
+> **CORRECTION (2026-07-06) — the cost numbers below are wrong.**
+> The V1.2 costs were hand-estimated (`/cost` was never captured) and inflated
+> ~2x by a duplicate-`message.id` double-count. Real costs, computed by
+> `bench/cost.py` (which reproduces the official `$1.04` baseline to the cent):
+>
+> | Session | Reported here | Real (deduped) | raw→main |
+> | --- | --- | --- | --- |
+> | Baseline | $1.04 | **$1.04** | 146k |
+> | Run A | $2.75 | **$1.46** (+40%) | 188k |
+> | Run B | $2.06 | **$1.56** (+50%) | 210k |
+>
+> Takeaways: v1.2's real overhead was +40/50% (not +164%), on a fixture where a
+> read-only scout structurally cannot win. The genuine finding survives: `raw→main`
+> **rises** (146k→188k→210k), i.e. the scout added raw context instead of removing
+> it (substitution ≈ 0). This whole run is not a controlled A/B — see
+> `docs/superpowers/specs/2026-07-06-haiku-scribe-v1-2-benchmark-target.md` for the
+> replacement methodology. The numbers below are kept only as the flawed original.
+
 Date: 2026-07-06
 Setup path: `haiku-scribe setup`
 Model: Sonnet 5 for all sessions
