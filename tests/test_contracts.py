@@ -8,42 +8,49 @@ from haiku_scribe.contracts import (
 )
 
 
-def test_guidance_classifies_remaining_context_work() -> None:
+def test_guidance_defaults_to_direct_reads() -> None:
     guidance = render_guidance_block()
 
     assert GUIDANCE_START in guidance
     assert GUIDANCE_END in guidance
-    assert "Before loading raw repository context, classify remaining work." in guidance
+    assert "Default: read directly." in guidance
     assert "Compact discovery tools may be used first" in guidance
-    assert "Use main session directly only when remaining work is a small focused read:" in guidance
-    assert "Use `haiku-scribe` when remaining work is broad context gathering:" in guidance
+
+
+def test_guidance_requires_both_conditions_to_delegate() -> None:
+    guidance = render_guidance_block()
+
+    assert "Delegate to `haiku-scribe` only when both hold:" in guidance
+    assert "overflowing or dominating the main context window" in guidance
+    assert "structured extraction is enough to finish the task" in guidance
+    assert "4+ files;" not in guidance
+
+
+def test_guidance_states_anti_double_read_rule() -> None:
+    guidance = render_guidance_block()
+
+    assert "Anti-double-read rule:" in guidance
+    assert "costs more than either option alone" in guidance
 
 
 def test_guidance_separates_evidence_gathering_from_final_judgment() -> None:
     guidance = render_guidance_block()
 
-    assert "Use `haiku-scribe` when remaining work is broad context gathering:" in guidance
-    assert "evidence extraction before broad reasoning." in guidance
     assert "Main Claude performs focused direct reads" in guidance
-    assert "Main Claude makes final decisions, edits, commits, user-facing conclusions." in guidance
-    assert "These exclusions apply final judgment, not pre-analysis." in guidance
+    assert "These exclusions apply to final judgment, not pre-analysis." in guidance
+    assert "Do not delegate:" in guidance
+    assert "final debugging root-cause conclusions;" in guidance
+    assert "architecture decisions;" in guidance
+    assert "security, authentication, authorization, or permission-sensitive conclusions;" in guidance
+    assert "precise edits;" in guidance
+    assert "PR summaries, commit messages, release notes, or public project outputs." in guidance
 
 
-def test_guidance_defines_small_focused_reads_and_broad_context() -> None:
+def test_guidance_keeps_verification_and_fallback() -> None:
     guidance = render_guidance_block()
 
-    assert "3 or fewer small files;" in guidance
-    assert "no directory reads;" in guidance
-    assert "no shell search over many files;" in guidance
-    assert "4+ files;" in guidance
-    assert "architecture review, flow mapping, pattern audit, unfamiliar-area exploration;" in guidance
-
-
-def test_guidance_recovers_from_skipped_scribe_gate() -> None:
-    guidance = render_guidance_block()
-
-    assert "If you already crossed into broad context gathering without `haiku-scribe`, stop and call it immediately." in guidance
-    assert "Do not ask user whether recover." in guidance
+    assert "Main Claude verifies important claims with focused direct reads before editing." in guidance
+    assert "If `haiku-scribe` is unavailable, say so explicitly and continue manually." in guidance
 
 
 def test_guidance_stays_static_and_non_enforcing() -> None:
@@ -54,14 +61,13 @@ def test_guidance_stays_static_and_non_enforcing() -> None:
     assert "block direct reads" not in guidance.lower()
 
 
-def test_agent_description_carries_context_routing_boundary() -> None:
+def test_agent_description_carries_massive_and_substitutable_criteria() -> None:
     agent = render_agent_markdown()
 
-    assert "Use when remaining work is broad context gathering:" in agent
-    assert "4+ files, large files, directory/repo survey" in agent
-    assert "architecture review, flow mapping, pattern audit" in agent
-    assert "Skip small focused reads:" in agent
-    assert "3 or fewer small files" in agent
+    assert "material is massive enough to risk overflowing or dominating" in agent
+    assert "structured extraction is enough to finish the task" in agent
+    assert "read directly instead of delegating then re-reading" in agent
+    assert "4+ files" not in agent
 
 
 def test_agent_tools_remain_read_only() -> None:
@@ -73,8 +79,30 @@ def test_agent_tools_remain_read_only() -> None:
     assert "Agent" not in frontmatter
 
 
-def test_agent_contract_includes_exploration_budget() -> None:
+def test_agent_contract_includes_exploration_budget_for_multi_and_single_file() -> None:
     agent = render_agent_markdown()
 
     assert "Target about 12 file reads." in agent
     assert "Stop around 15 file reads unless the main session explicitly named the files to inspect." in agent
+    assert "read it in full across offset/limit slices" in agent
+
+
+def test_agent_boundaries_match_doctor_checks() -> None:
+    agent = render_agent_markdown()
+
+    for fragment in (
+        "Browse web.",
+        "Edit files.",
+        "Write files.",
+        "Run shell commands.",
+        "Use MCP tools.",
+        "Invoke other agents.",
+    ):
+        assert fragment in agent
+
+
+def test_agent_response_shape_includes_structured_extraction() -> None:
+    agent = render_agent_markdown()
+
+    assert "### Structured Extraction" in agent
+    assert "The main session must be able to answer without re-reading the source." in agent

@@ -80,10 +80,10 @@ def _check_v1_2_hook(paths: ClaudePaths, settings: dict[str, Any]) -> list[str]:
         failures.append("settings hooks must be JSON object")
         return failures
 
-    if not _group_has_command(hooks.get("UserPromptSubmit"), "", command):
-        failures.append("missing V1.2 UserPromptSubmit hook")
-    if not _group_has_command(hooks.get("PreToolUse"), "Read|Grep", command):
-        failures.append("missing V1.2 PreToolUse hook with matcher Read|Grep")
+    if _group_has_command(hooks.get("UserPromptSubmit"), "", command):
+        failures.append("legacy V1.2 UserPromptSubmit hook still registered")
+    if not _group_has_command(hooks.get("PreToolUse"), "Read", command):
+        failures.append("missing V1.2 PreToolUse hook with matcher Read")
     return failures
 
 

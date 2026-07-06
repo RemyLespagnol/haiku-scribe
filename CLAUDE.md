@@ -37,7 +37,7 @@ Two ideas govern everything:
 - **Agent file** `~/.claude/agents/haiku-scribe.md` — generated verbatim by `render_agent_markdown()` in `contracts.py`. The read-only contract (`tools: Read, Glob, Grep`, `model: haiku`, forbid edit/write/shell/web/MCP) lives here as a string literal.
 - **Guidance block** in `~/.claude/CLAUDE.md` — `render_guidance_block()` in `contracts.py`, inserted/replaced via marker comments.
 - **Deny rules** in `~/.claude/settings.json` — `DEFAULT_DENY_RULES` (secrets/creds globs), merged by `settings.py::merge_deny_rules`.
-- **V1.2 nudge hooks** — `v1_2_hooks.py` writes a standalone hook script (`render_nudge_hook_script()`, emitted as a string literal) and registers it as a `UserPromptSubmit` hook plus a `PreToolUse` hook (matcher `Read|Grep`) in `settings.json`. The script detects broad-context prompts by keyword and prints a delegation nudge; it logs decisions to `~/.claude/haiku-scribe-nudges.jsonl` and self-suppresses inside subagent transcripts.
+- **Size-gated nudge hook** — `v1_2_hooks.py` writes a standalone hook script (`render_nudge_hook_script()`, emitted as a string literal) and registers it as a single `PreToolUse` hook (matcher `Read`) in `settings.json`. On every `Read`, it `stat()`s the target file and nudges only if it exceeds `HAIKU_SCRIBE_SIZE_THRESHOLD` (default 256_000 bytes, env-overridable) — the break-even trigger is real file size, not prompt keywords. It dedups per `(session_id, file_path)`, logs decisions to `~/.claude/haiku-scribe-nudges.jsonl`, supports a `HAIKU_SCRIBE_HOOKS=off` kill-switch, and self-suppresses inside subagent transcripts. `merge_v1_2_hook` also migrates any prior v1.2 keyword-nudge layout (`UserPromptSubmit` group + `PreToolUse` matcher `Read|Grep`) by stripping the owned command from both before re-registering.
 
 `doctor.py` re-derives all of the above and reports missing/invalid entries — it is the spec of what a healthy install looks like; keep it in sync when changing any generated content.
 
@@ -47,6 +47,6 @@ The agent markdown, guidance block, and hook script are Python strings in `contr
 
 ## Notes
 
-- `contracts.py` and the guidance block contain intentional-looking duplicated/terse sentences — that is the current authored wording, not accidental. Don't "clean it up" without checking `docs/superpowers/specs/` for intent.
+- `contracts.py`'s guidance block and agent contract encode the v1.3 break-even rule: delegate to `haiku-scribe` only when material is massive *and* a structured extraction is enough — never delegate then re-read. See `docs/superpowers/specs/2026-07-06-v1-3-size-gated-nudge.md` before changing that wording.
 - `bench/` is a semi-manual CodeGraph evaluation workspace; the base agent is deliberately kept MCP/CodeGraph-free until benchmark data justifies otherwise.
 - `docs/superpowers/` holds the design specs and plans behind each version (V0–V5 roadmap in README). Read the relevant spec before changing behavior.

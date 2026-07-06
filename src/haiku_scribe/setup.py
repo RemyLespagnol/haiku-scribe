@@ -39,7 +39,7 @@ def setup_user(home: Path, dry_run: bool = False) -> SetupResult:
         f"Would update {paths.guidance_path}",
         f"Would merge deny rules into {paths.settings_path}",
         f"Would write {hook_path}",
-        f"Would merge UserPromptSubmit and PreToolUse hooks into {paths.settings_path}",
+        f"Would merge PreToolUse size-nudge hook into {paths.settings_path}",
     ]
     if dry_run:
         return SetupResult(planned=planned, written=[])

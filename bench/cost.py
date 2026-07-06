@@ -16,7 +16,6 @@ So only (input, output) per model is table-driven.
 
 import argparse
 import json
-import os
 from pathlib import Path
 
 # (input, output) $ per MTok. Keys match a substring of message.model.
