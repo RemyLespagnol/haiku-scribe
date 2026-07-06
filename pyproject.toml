@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "haiku-scribe"
+version = "0.1.0"
+description = "Personal installer for the Haiku Scribe Claude Code subagent"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+haiku-scribe = "haiku_scribe.cli:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
