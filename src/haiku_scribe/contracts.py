@@ -79,6 +79,14 @@ def render_guidance_block() -> str:
 
 Before broad code exploration, call `haiku-scribe` first.
 
+Indexed repositories:
+- For indexed repositories, use CodeGraph first for symbol and file discovery.
+- If CodeGraph narrows the work to 2 or fewer direct file reads, continue in the main session.
+- If broad reading remains after CodeGraph, call `haiku-scribe` before direct Read, Grep, or shell exploration.
+
+Non-indexed repositories:
+- Call `haiku-scribe` before broad Read, Grep, or shell exploration.
+
 Mandatory triggers:
 - You are about to read 3+ files.
 - You are about to read a file likely over 400 lines mainly for orientation.
@@ -108,6 +116,8 @@ Red flags:
 - "This probably only needs a quick grep" is not a reason to skip `haiku-scribe` when a mandatory trigger applies.
 
 Do not read files yourself first and then decide whether Haiku Scribe was needed.
+If you already crossed a mandatory trigger without `haiku-scribe`, stop and call it immediately.
+Do not ask the user whether to recover.
 
 If `haiku-scribe` is unavailable, say so explicitly and continue manually.
 

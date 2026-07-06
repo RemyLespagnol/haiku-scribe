@@ -22,6 +22,21 @@ def test_guidance_separates_evidence_gathering_from_final_judgment() -> None:
     assert "These exclusions apply to final judgment, not pre-analysis." in guidance
 
 
+def test_guidance_uses_codegraph_before_scribe_for_indexed_repositories() -> None:
+    guidance = render_guidance_block()
+
+    assert "For indexed repositories, use CodeGraph first for symbol and file discovery." in guidance
+    assert "If CodeGraph narrows the work to 2 or fewer direct file reads, continue in the main session." in guidance
+    assert "If broad reading remains after CodeGraph, call `haiku-scribe` before direct Read, Grep, or shell exploration." in guidance
+
+
+def test_guidance_recovers_from_skipped_scribe_gate() -> None:
+    guidance = render_guidance_block()
+
+    assert "If you already crossed a mandatory trigger without `haiku-scribe`, stop and call it immediately." in guidance
+    assert "Do not ask the user whether to recover." in guidance
+
+
 def test_guidance_stays_static_and_non_enforcing() -> None:
     guidance = render_guidance_block()
 
