@@ -69,6 +69,34 @@ def test_nudge_hook_injects_context_for_broad_prompt(tmp_path: Path) -> None:
     assert json.loads(log_lines[0])["decision"] == "nudge"
 
 
+def test_nudge_hook_disabled_by_env_kill_switch(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+
+    env = os.environ.copy()
+    env["HAIKU_SCRIBE_HOOKS"] = "off"
+    result = subprocess.run(
+        [sys.executable, str(hook_path)],
+        input=json.dumps(
+            {
+                "hook_event_name": "UserPromptSubmit",
+                "session_id": "s1",
+                "prompt_id": "p1",
+                "cwd": str(tmp_path),
+                "prompt": "Map the flow and review architecture",
+            }
+        ),
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert not (tmp_path / ".claude" / "haiku-scribe-nudges.jsonl").exists()
+
+
 def test_nudge_hook_stays_silent_for_small_prompt(tmp_path: Path) -> None:
     hook_path = write_hook(tmp_path)
 

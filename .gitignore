@@ -8,3 +8,4 @@ docs/haiku_scribe_prd.md
 docs/haiku_scribe_skill_prd.md
 # regenerable bench fixtures
 bench/fixtures/*.log
+bench/runs/*.log

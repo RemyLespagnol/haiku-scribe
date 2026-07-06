@@ -35,6 +35,9 @@ def _record(args) -> None:
         "mode": args.mode,
         "session": args.session,
         "total_cost": cost["total_cost"],
+        # Per-model breakdown proves WHO did the work: haiku cost present =>
+        # the haiku-scribe subagent actually ran (general-purpose inherits sonnet).
+        "cost_by_model": cost["cost_by_model"],
         "raw_into_main": cost["raw_into_main"],
         "main_reads": main_tools.get("Read", 0),
         "main_greps": main_tools.get("Grep", 0),

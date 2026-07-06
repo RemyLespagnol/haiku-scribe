@@ -25,6 +25,7 @@ def render_nudge_hook_script() -> str:
     return '''from __future__ import annotations
 
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -103,6 +104,8 @@ def has_initial_nudge(events: list[dict], session_id: object, prompt_id: object)
 
 
 def main() -> int:
+    if os.environ.get("HAIKU_SCRIBE_HOOKS") == "off":
+        return 0
     payload = json.load(sys.stdin)
     if should_skip_payload(payload):
         return 0
