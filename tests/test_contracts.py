@@ -95,8 +95,8 @@ def test_agent_tools_remain_read_only() -> None:
 def test_agent_contract_includes_exploration_budget_for_multi_and_single_file() -> None:
     agent = render_agent_markdown()
 
-    assert "Target about 12 file reads." in agent
-    assert "Stop around 15 file reads unless the main session explicitly named the files to inspect." in agent
+    assert "cover it completely in one pass" in agent
+    assert "never stop silently mid-scope" in agent
     assert "read it in full across offset/limit slices" in agent
 
 
