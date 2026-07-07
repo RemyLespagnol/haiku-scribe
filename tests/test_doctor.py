@@ -87,7 +87,7 @@ def test_doctor_reports_agent_content_drift(tmp_path):
 
 
 def test_doctor_reports_hook_script_content_drift(tmp_path):
-    assert run_cli("setup", "--home", str(tmp_path)).returncode == 0
+    assert run_cli("setup", "--hooks", "on", "--home", str(tmp_path)).returncode == 0
     hook = tmp_path / ".claude" / "hooks" / "haiku-scribe-v1-2-nudge.py"
     hook.write_text(hook.read_text(encoding="utf-8") + "\nextra trailing note\n", encoding="utf-8")
 

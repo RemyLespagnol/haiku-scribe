@@ -372,7 +372,7 @@ def test_setup_migrates_legacy_v1_2_layout(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = run_cli("setup", "--home", str(tmp_path))
+    result = run_cli("setup", "--hooks", "on", "--home", str(tmp_path))
 
     assert result.returncode == 0
     settings = json.loads(settings_path.read_text(encoding="utf-8"))

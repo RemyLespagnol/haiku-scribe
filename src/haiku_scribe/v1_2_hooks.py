@@ -459,6 +459,10 @@ def _owned_hook_command(settings: dict[str, Any]) -> str | None:
     return command if isinstance(command, str) else None
 
 
+def owned_hook_command(settings: dict[str, Any]) -> str | None:
+    return _owned_hook_command(settings)
+
+
 def _write_text_if_changed(path: Path, text: str) -> bool:
     if path.exists() and path.read_text(encoding="utf-8") == text:
         return False

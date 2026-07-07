@@ -17,6 +17,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     setup = subparsers.add_parser("setup", help="Install Haiku Scribe for one user")
     setup.add_argument("--dry-run", action="store_true", help="Print planned changes without writing files")
+    setup.add_argument(
+        "--hooks",
+        choices=["off", "on"],
+        default="off",
+        help="Install opt-in V1.2 nudge hooks (default: off)",
+    )
     setup.add_argument("--home", type=Path, default=Path.home(), help=argparse.SUPPRESS)
 
     doctor = subparsers.add_parser("doctor", help="Validate the personal Haiku Scribe installation")
@@ -43,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "setup":
         try:
-            result = setup_user(args.home, dry_run=args.dry_run)
+            result = setup_user(args.home, dry_run=args.dry_run, install_hooks=args.hooks == "on")
         except SettingsError as exc:
             print(f"setup failed: {exc}", file=sys.stderr)
             return 1
@@ -54,6 +60,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             for path in result.written:
                 print(f"Wrote {path}")
+            for path in result.removed:
+                print(f"Removed {path}")
         return 0
 
     if args.command == "doctor":

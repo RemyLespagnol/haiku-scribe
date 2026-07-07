@@ -43,7 +43,7 @@ def test_setup_dry_run_command_exists(tmp_path: Path) -> None:
 
 
 def test_setup_dry_run_writes_nothing(tmp_path: Path) -> None:
-    result = run_cli("setup", "--dry-run", "--home", str(tmp_path))
+    result = run_cli("setup", "--dry-run", "--hooks", "on", "--home", str(tmp_path))
 
     assert result.returncode == 0
     assert "Dry run" in result.stdout
@@ -69,8 +69,8 @@ def test_setup_installs_agent_guidance_and_settings(tmp_path: Path) -> None:
 
 
 def test_setup_is_idempotent(tmp_path: Path) -> None:
-    first = run_cli("setup", "--home", str(tmp_path))
-    second = run_cli("setup", "--home", str(tmp_path))
+    first = run_cli("setup", "--hooks", "on", "--home", str(tmp_path))
+    second = run_cli("setup", "--hooks", "on", "--home", str(tmp_path))
 
     assert first.returncode == 0
     assert second.returncode == 0
@@ -82,14 +82,25 @@ def test_setup_is_idempotent(tmp_path: Path) -> None:
     assert len(settings["hooks"]["PreToolUse"]) == 1
 
 
-def test_setup_installs_v1_2_hooks_by_default(tmp_path: Path) -> None:
+def test_setup_installs_no_hooks_by_default(tmp_path: Path) -> None:
     result = run_cli("setup", "--home", str(tmp_path))
 
     assert result.returncode == 0
     hook_path = tmp_path / ".claude" / "hooks" / "haiku-scribe-v1-2-nudge.py"
     settings_path = tmp_path / ".claude" / "settings.json"
-    assert hook_path.exists()
+    assert not hook_path.exists()
+    settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    assert "hooks" not in settings
+    assert "owned_v1_2_nudge_hook_command" not in settings.get("haiku_scribe", {})
 
+
+def test_setup_hooks_on_installs_v1_2_hooks(tmp_path: Path) -> None:
+    result = run_cli("setup", "--hooks", "on", "--home", str(tmp_path))
+
+    assert result.returncode == 0
+    hook_path = tmp_path / ".claude" / "hooks" / "haiku-scribe-v1-2-nudge.py"
+    settings_path = tmp_path / ".claude" / "settings.json"
+    assert hook_path.exists()
     settings = json.loads(settings_path.read_text(encoding="utf-8"))
     command = settings["haiku_scribe"]["owned_v1_2_nudge_hook_command"]
     assert command.endswith("haiku-scribe-v1-2-nudge.py")
@@ -99,6 +110,21 @@ def test_setup_installs_v1_2_hooks_by_default(tmp_path: Path) -> None:
     assert settings["hooks"]["PreToolUse"] == [
         {"matcher": "Read|Grep", "hooks": [{"type": "command", "command": command}]}
     ]
+
+
+def test_setup_default_removes_previously_owned_hooks(tmp_path: Path) -> None:
+    run_cli("setup", "--hooks", "on", "--home", str(tmp_path))
+    result = run_cli("setup", "--home", str(tmp_path))
+
+    assert result.returncode == 0
+    hook_path = tmp_path / ".claude" / "hooks" / "haiku-scribe-v1-2-nudge.py"
+    settings_path = tmp_path / ".claude" / "settings.json"
+    assert not hook_path.exists()
+    settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    assert "hooks" not in settings
+    assert "owned_v1_2_nudge_hook_command" not in settings.get("haiku_scribe", {})
+    # deny rules survive the hook removal
+    assert "Read(**/*credential*)" in settings["permissions"]["deny"]
 
 
 def test_setup_creates_backups_for_existing_files(tmp_path: Path) -> None:
@@ -196,7 +222,7 @@ def test_setup_preserves_user_prompt_submit_when_adding_owned_hook(tmp_path: Pat
         encoding="utf-8",
     )
 
-    result = run_cli("setup", "--home", str(tmp_path))
+    result = run_cli("setup", "--hooks", "on", "--home", str(tmp_path))
 
     assert result.returncode == 0
     settings = json.loads(settings_path.read_text(encoding="utf-8"))
@@ -208,7 +234,7 @@ def test_setup_preserves_user_prompt_submit_when_adding_owned_hook(tmp_path: Pat
 
 
 def test_doctor_fails_when_v1_2_hook_script_missing(tmp_path: Path) -> None:
-    assert run_cli("setup", "--home", str(tmp_path)).returncode == 0
+    assert run_cli("setup", "--hooks", "on", "--home", str(tmp_path)).returncode == 0
     (tmp_path / ".claude" / "hooks" / "haiku-scribe-v1-2-nudge.py").unlink()
 
     result = run_cli("doctor", "--home", str(tmp_path))
@@ -218,7 +244,7 @@ def test_doctor_fails_when_v1_2_hook_script_missing(tmp_path: Path) -> None:
 
 
 def test_doctor_fails_when_v1_2_pre_tool_matcher_wrong(tmp_path: Path) -> None:
-    assert run_cli("setup", "--home", str(tmp_path)).returncode == 0
+    assert run_cli("setup", "--hooks", "on", "--home", str(tmp_path)).returncode == 0
     settings_path = tmp_path / ".claude" / "settings.json"
     settings = json.loads(settings_path.read_text(encoding="utf-8"))
     settings["hooks"]["PreToolUse"][0]["matcher"] = "Read"
@@ -231,7 +257,7 @@ def test_doctor_fails_when_v1_2_pre_tool_matcher_wrong(tmp_path: Path) -> None:
 
 
 def test_doctor_fails_when_v1_2_hook_ownership_missing(tmp_path: Path) -> None:
-    assert run_cli("setup", "--home", str(tmp_path)).returncode == 0
+    assert run_cli("setup", "--hooks", "on", "--home", str(tmp_path)).returncode == 0
     settings_path = tmp_path / ".claude" / "settings.json"
     settings = json.loads(settings_path.read_text(encoding="utf-8"))
     settings["haiku_scribe"].pop("owned_v1_2_nudge_hook_command")
