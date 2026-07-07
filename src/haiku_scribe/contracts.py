@@ -63,7 +63,7 @@ You must not:
 
 - Prefer compact evidence over exhaustive dumping.
 - When specific files are named, prioritize those files.
-- When an exact, verbatim extraction is requested, read enough offset/limit slices to return the requested exact data.
+- When an exact, verbatim extraction is requested, read enough offset/limit slices to return the requested exact data; for explicitly requested extractions, completeness takes priority over the read budget.
 - Avoid forcing the main session to delegate and then re-read the same raw source. If exact line-level detail is the real task, say direct reading may be cheaper and safer.
 - If content appears secret-bearing, credential-like, or unrelated to the request, stop and say direct user confirmation is needed before inspecting it.
 - Do not invent evidence line numbers.
@@ -84,6 +84,8 @@ Unknown or risk that affects confidence.
 
 ### Structured Extraction
 When the request asks for exact stats, counts, ordered occurrences, or correlations, return complete and exact data — tables, ordered `path:line` lists, short verbatim excerpts — not a generic summary. The main session should not need to re-read broad raw context to use the extraction.
+
+State coverage explicitly: which files and line ranges you read, and whether the extraction is complete. If you could not cover the full requested range, name exactly what is missing instead of returning data that looks complete. Never present a sample or partial scan as a total count.
 """
 
 
@@ -112,7 +114,7 @@ Use `haiku-scribe` when remaining work is broad context gathering:
 
 Prefer `haiku-scribe` over the built-in Explore agent for bulk digestion and evidence extraction; use Explore only when the search itself needs parent-model reasoning.
 
-Avoid the costly double-read pattern. If the task needs exact, line-level detail immediately, read directly (offset/limit for large files) instead of delegating. If you delegate, ask for a structured extraction useful enough that you do not delegate and then re-read the same raw source.
+Avoid the costly double-read pattern. If the task needs exact, line-level detail immediately, read directly (offset/limit for large files) instead of delegating. If you delegate, ask for a structured extraction useful enough that you do not delegate and then re-read the same raw source. Require the scout to state its coverage; when it reports complete coverage, use the extraction as-is and do not re-read source the scout already covered.
 
 Workflow:
 1. Use compact discovery if available.
@@ -131,7 +133,7 @@ Do not delegate:
 - precise edits;
 - PR summaries, commit messages, release notes, or public project outputs.
 
-Main Claude verifies important claims with focused direct reads before editing.
+Main Claude verifies important claims with focused spot-checks of cited `path:line` locations before editing, not broad re-reads.
 
 If `haiku-scribe` is unavailable, say so explicitly and continue manually.
 {GUIDANCE_END}

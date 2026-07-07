@@ -50,8 +50,19 @@ def test_guidance_separates_evidence_gathering_from_final_judgment() -> None:
 def test_guidance_keeps_verification_and_fallback() -> None:
     guidance = render_guidance_block()
 
-    assert "Main Claude verifies important claims with focused direct reads before editing." in guidance
+    assert (
+        "Main Claude verifies important claims with focused spot-checks of cited `path:line` "
+        "locations before editing, not broad re-reads." in guidance
+    )
     assert "If `haiku-scribe` is unavailable, say so explicitly and continue manually." in guidance
+
+
+def test_guidance_substitution_rule_on_scout_return() -> None:
+    guidance = render_guidance_block()
+
+    assert "Require the scout to state its coverage" in guidance
+    assert "use the extraction as-is" in guidance
+    assert "do not re-read source the scout already covered" in guidance
 
 
 def test_guidance_stays_static_and_non_enforcing() -> None:
@@ -108,6 +119,20 @@ def test_agent_response_shape_includes_structured_extraction() -> None:
 
     assert "### Structured Extraction" in agent
     assert "The main session should not need to re-read broad raw context" in agent
+
+
+def test_agent_structured_extraction_declares_coverage_and_forbids_fake_totals() -> None:
+    agent = render_agent_markdown()
+
+    assert "State coverage explicitly" in agent
+    assert "whether the extraction is complete" in agent
+    assert "Never present a sample or partial scan as a total count." in agent
+
+
+def test_agent_reads_full_range_for_requested_exact_extraction() -> None:
+    agent = render_agent_markdown()
+
+    assert "completeness takes priority over the read budget" in agent
 
 
 def test_guidance_positions_against_builtin_explore() -> None:

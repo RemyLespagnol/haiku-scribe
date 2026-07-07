@@ -16,6 +16,7 @@ So only (input, output) per model is table-driven.
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 # (input, output) $ per MTok. Keys match a substring of message.model.
@@ -24,7 +25,9 @@ MODEL_RATES = {
     "sonnet": (3.0, 15.0),
     "opus": (15.0, 75.0),
 }
-DEFAULT_PROJECTS = Path.home() / ".claude" / "projects"
+# Account-swap tools (e.g. cswap) relocate transcripts; point this env var at the
+# active account's projects dir when ~/.claude/projects is not where sessions land.
+DEFAULT_PROJECTS = Path(os.environ.get("CLAUDE_PROJECTS_DIR", str(Path.home() / ".claude" / "projects")))
 
 
 def _rate(model: str) -> tuple[float, float]:
