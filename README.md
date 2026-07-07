@@ -41,17 +41,17 @@ The implementation includes:
 - a generated `~/.claude/agents/haiku-scribe.md` subagent;
 - a managed Haiku Scribe guidance block in `~/.claude/CLAUDE.md`;
 - merged read-deny rules in `~/.claude/settings.json`;
-- ownership metadata for deny rules added by Haiku Scribe;
+- opt-in V1.2 prompt nudge hooks under `~/.claude/hooks/` (install with `setup --hooks on`; plain `setup` leaves them off and removes any previously installed ones), with a size-gated fallback for very large direct reads;
+- ownership metadata for deny rules and V1.2 hook entries;
 - backups before mutating existing Claude Code files;
 - dry-run support for setup and uninstall;
-- `doctor` checks for missing files, unsafe agent drift, missing guidance, and
-  missing deny rules;
+- `doctor` checks for missing files, unsafe agent drift, missing guidance, and missing deny rules, and validates the V1.2 hooks only when they are installed;
 - focused pytest coverage for setup, doctor, uninstall, settings merge,
-  markdown block handling, and the agent contract.
+  markdown block handling, the agent contract, and hook behavior.
 
 Still out of scope:
 
-- automatic invocation hooks;
+- hard blocking of direct reads;
 - prompt rewriting or enforcement loops;
 - team or global rollout;
 - Claude Code plugin packaging;
@@ -127,6 +127,7 @@ haiku-scribe doctor
 ~/.claude/agents/haiku-scribe.md
 ~/.claude/CLAUDE.md
 ~/.claude/settings.json
+~/.claude/hooks/haiku-scribe-v1-2-nudge.py
 ```
 
 When existing files need to change, backups are written under:
@@ -213,6 +214,9 @@ remove only content it owns.
 ## When To Use It
 
 Use Haiku Scribe before the main Claude session loads broad raw context.
+Do not delegate and then re-read the same raw source broadly; either ask for a
+structured extraction that is useful enough to continue, or read directly when
+exact line-level detail is the real task.
 
 Good delegation triggers:
 
