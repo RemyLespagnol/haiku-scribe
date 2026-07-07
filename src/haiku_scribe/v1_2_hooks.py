@@ -24,6 +24,7 @@ class PrototypeHooksResult:
 def render_nudge_hook_script() -> str:
     return '''from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
@@ -129,19 +130,49 @@ def already_nudged(events: list[dict], session_id: object, file_path: str) -> bo
     )
 
 
-def has_followup(events: list[dict], session_id: object, prompt_id: object) -> bool:
+def make_prompt_key(payload: dict) -> tuple[str, str]:
+    """Identity for one flagged prompt: prompt_id when the payload has it,
+    otherwise a unique short hash (no raw prompt text stored)."""
+    prompt_id = payload.get("prompt_id")
+    if prompt_id:
+        return str(prompt_id), "prompt_id"
+    seed = "{}|{}|{}".format(
+        payload.get("session_id"),
+        payload.get("prompt", ""),
+        datetime.now(timezone.utc).isoformat(),
+    )
+    return "fb-" + hashlib.sha1(seed.encode("utf-8")).hexdigest()[:12], "fallback"
+
+
+def event_prompt_key(event: dict) -> object:
+    return event.get("prompt_key") or event.get("prompt_id")
+
+
+def resolve_prompt_key(events: list[dict], session_id: object, prompt_id: object) -> tuple[object, str]:
+    """PreToolUse payloads carry no prompt text, so without prompt_id the
+    best available identity is the latest nudge in this session.
+    # ponytail: approximate attribution; gain reports these as fallback."""
+    if prompt_id:
+        return str(prompt_id), "prompt_id"
+    for event in reversed(events):
+        if event.get("session_id") == session_id and event.get("decision") == "nudge":
+            return event.get("prompt_key"), "fallback"
+    return None, "fallback"
+
+
+def has_followup(events: list[dict], session_id: object, prompt_key: object) -> bool:
     return any(
         event.get("session_id") == session_id
-        and event.get("prompt_id") == prompt_id
+        and event_prompt_key(event) == prompt_key
         and event.get("decision") == "pre_tool_followup"
         for event in events
     )
 
 
-def has_initial_nudge(events: list[dict], session_id: object, prompt_id: object) -> bool:
+def has_initial_nudge(events: list[dict], session_id: object, prompt_key: object) -> bool:
     return any(
         event.get("session_id") == session_id
-        and event.get("prompt_id") == prompt_id
+        and event_prompt_key(event) == prompt_key
         and event.get("decision") == "nudge"
         for event in events
     )
@@ -169,6 +200,7 @@ def handle_user_prompt_submit(payload: dict) -> int:
 
     claude_dir = Path(__file__).resolve().parents[1]
     log_path = claude_dir / "haiku-scribe-nudges.jsonl"
+    prompt_key, identity = make_prompt_key(payload)
     append_event(
         log_path,
         {
@@ -178,6 +210,8 @@ def handle_user_prompt_submit(payload: dict) -> int:
             "matched": matched,
             "session_id": payload.get("session_id"),
             "prompt_id": payload.get("prompt_id"),
+            "prompt_key": prompt_key,
+            "identity": identity,
             "cwd": payload.get("cwd"),
         },
     )
@@ -201,10 +235,10 @@ def handle_pre_tool_use(payload: dict) -> int:
     log_path = claude_dir / "haiku-scribe-nudges.jsonl"
     events = list(iter_events(log_path))
     session_id = payload.get("session_id")
-    prompt_id = payload.get("prompt_id")
+    prompt_key, identity = resolve_prompt_key(events, session_id, payload.get("prompt_id"))
 
-    if has_initial_nudge(events, session_id, prompt_id):
-        if tool_name in {"Read", "Grep"} and not has_followup(events, session_id, prompt_id):
+    if prompt_key is not None and has_initial_nudge(events, session_id, prompt_key):
+        if tool_name in {"Read", "Grep"} and not has_followup(events, session_id, prompt_key):
             append_event(
                 log_path,
                 {
@@ -212,7 +246,9 @@ def handle_pre_tool_use(payload: dict) -> int:
                     "decision": "pre_tool_followup",
                     "reason": "direct_tool_after_nudge",
                     "session_id": session_id,
-                    "prompt_id": prompt_id,
+                    "prompt_id": payload.get("prompt_id"),
+                    "prompt_key": prompt_key,
+                    "identity": identity,
                     "cwd": payload.get("cwd"),
                     "tool_name": tool_name,
                 },

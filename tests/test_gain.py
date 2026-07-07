@@ -58,3 +58,43 @@ def test_verdict_flags_ignored_nudges_as_audit_only(tmp_path: Path) -> None:
     _write_log(log, events)
     text = format_report(build_report(log))
     assert "audit-only" in text
+
+
+def test_all_prompt_id_events_report_high_confidence(tmp_path: Path) -> None:
+    log = tmp_path / "nudges.jsonl"
+    _write_log(
+        log,
+        [
+            {"decision": "nudge", "identity": "prompt_id", "prompt_id": "p1"},
+            {"decision": "nudge", "prompt_id": "p2"},  # older hook: no identity field
+            {"decision": "pre_tool_followup", "identity": "prompt_id", "prompt_id": "p1"},
+        ],
+    )
+    report = build_report(log)
+    assert report.prompt_id_events == 3
+    assert report.fallback_events == 0
+    assert report.high_confidence
+    text = format_report(report)
+    assert "3 with prompt_id / 0 fallback" in text
+    assert "Confidence: high" in text
+
+
+def test_fallback_events_report_proxy_only_confidence(tmp_path: Path) -> None:
+    log = tmp_path / "nudges.jsonl"
+    _write_log(
+        log,
+        [
+            {"decision": "nudge", "identity": "prompt_id", "prompt_id": "p1"},
+            {"decision": "nudge", "identity": "fallback", "prompt_key": "fb-abc123"},
+            {"decision": "nudge", "prompt_id": None},  # older hook, missing prompt_id
+            {"decision": "pre_tool_followup", "identity": "fallback", "prompt_key": "fb-abc123"},
+        ],
+    )
+    report = build_report(log)
+    assert report.prompt_id_events == 1
+    assert report.fallback_events == 3
+    assert not report.high_confidence
+    text = format_report(report)
+    assert "1 with prompt_id / 3 fallback" in text
+    assert "Confidence: proxy-only" in text
+    assert "over- or under-counted" in text

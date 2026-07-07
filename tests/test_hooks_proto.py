@@ -57,36 +57,42 @@ def write_file(tmp_path: Path, name: str, size: int) -> Path:
     return file_path
 
 
-def read_pre_tool_use(session_id: str, file_path: Path) -> dict[str, object]:
-    return {
+def read_pre_tool_use(session_id: str, file_path: Path, prompt_id: str | None = "p1") -> dict[str, object]:
+    payload: dict[str, object] = {
         "hook_event_name": "PreToolUse",
         "session_id": session_id,
-        "prompt_id": "p1",
         "cwd": str(file_path.parent),
         "tool_name": "Read",
         "tool_input": {"file_path": str(file_path)},
     }
+    if prompt_id is not None:
+        payload["prompt_id"] = prompt_id
+    return payload
 
 
-def grep_pre_tool_use(session_id: str, cwd: Path) -> dict[str, object]:
-    return {
+def grep_pre_tool_use(session_id: str, cwd: Path, prompt_id: str | None = "p1") -> dict[str, object]:
+    payload: dict[str, object] = {
         "hook_event_name": "PreToolUse",
         "session_id": session_id,
-        "prompt_id": "p1",
         "cwd": str(cwd),
         "tool_name": "Grep",
         "tool_input": {"pattern": "example"},
     }
+    if prompt_id is not None:
+        payload["prompt_id"] = prompt_id
+    return payload
 
 
-def prompt_submit(prompt: str, prompt_id: str = "p1") -> dict[str, object]:
-    return {
+def prompt_submit(prompt: str, prompt_id: str | None = "p1") -> dict[str, object]:
+    payload: dict[str, object] = {
         "hook_event_name": "UserPromptSubmit",
         "session_id": "s1",
-        "prompt_id": prompt_id,
         "cwd": "/tmp/project",
         "prompt": prompt,
     }
+    if prompt_id is not None:
+        payload["prompt_id"] = prompt_id
+    return payload
 
 
 def nudges_log(tmp_path: Path) -> Path:
@@ -154,6 +160,69 @@ def test_pre_tool_hook_reinforces_prompt_nudge_once_for_read_or_grep(tmp_path: P
     assert second.stdout == ""
     decisions = [json.loads(line)["decision"] for line in nudges_log(tmp_path).read_text(encoding="utf-8").splitlines()]
     assert decisions == ["nudge", "pre_tool_followup"]
+
+
+def test_followup_is_per_prompt_when_prompt_id_present(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+    small_file = write_file(tmp_path, "small.py", 200)
+
+    assert run_hook(hook_path, prompt_submit("scan the repo architecture", prompt_id="p1")).returncode == 0
+    assert "haiku-scribe" in json.loads(run_hook(hook_path, read_pre_tool_use("s1", small_file, prompt_id="p1")).stdout)["hookSpecificOutput"]["additionalContext"]
+    assert run_hook(hook_path, prompt_submit("trace the request path", prompt_id="p2")).returncode == 0
+    second = run_hook(hook_path, read_pre_tool_use("s1", small_file, prompt_id="p2"))
+
+    assert "haiku-scribe" in json.loads(second.stdout)["hookSpecificOutput"]["additionalContext"]
+    decisions = [json.loads(line)["decision"] for line in nudges_log(tmp_path).read_text(encoding="utf-8").splitlines()]
+    assert decisions == ["nudge", "pre_tool_followup", "nudge", "pre_tool_followup"]
+
+
+def test_missing_prompt_id_still_allows_one_followup_per_flagged_prompt(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+    small_file = write_file(tmp_path, "small.py", 200)
+
+    assert run_hook(hook_path, prompt_submit("scan the repo architecture", prompt_id=None)).returncode == 0
+    first = run_hook(hook_path, read_pre_tool_use("s1", small_file, prompt_id=None))
+    repeat = run_hook(hook_path, read_pre_tool_use("s1", small_file, prompt_id=None))
+    assert run_hook(hook_path, prompt_submit("trace the request path", prompt_id=None)).returncode == 0
+    second = run_hook(hook_path, read_pre_tool_use("s1", small_file, prompt_id=None))
+
+    assert "haiku-scribe" in json.loads(first.stdout)["hookSpecificOutput"]["additionalContext"]
+    assert repeat.stdout == ""  # same flagged prompt: still deduped
+    assert "haiku-scribe" in json.loads(second.stdout)["hookSpecificOutput"]["additionalContext"]
+    decisions = [json.loads(line)["decision"] for line in nudges_log(tmp_path).read_text(encoding="utf-8").splitlines()]
+    assert decisions == ["nudge", "pre_tool_followup", "nudge", "pre_tool_followup"]
+
+
+def test_missing_prompt_id_events_use_fallback_hash_not_raw_prompt(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+    small_file = write_file(tmp_path, "small.py", 200)
+    secret_prompt = "scan the repo for SECRET_TOKEN_XYZ"
+
+    assert run_hook(hook_path, prompt_submit(secret_prompt, prompt_id=None)).returncode == 0
+    assert run_hook(hook_path, read_pre_tool_use("s1", small_file, prompt_id=None)).returncode == 0
+
+    log_text = nudges_log(tmp_path).read_text(encoding="utf-8")
+    assert "SECRET_TOKEN_XYZ" not in log_text
+    events = [json.loads(line) for line in log_text.splitlines()]
+    assert [e["identity"] for e in events] == ["fallback", "fallback"]
+    assert all(str(e["prompt_key"]).startswith("fb-") for e in events)
+    assert events[0]["prompt_key"] == events[1]["prompt_key"]
+
+
+def test_missing_prompt_id_does_not_lock_out_size_nudge(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+    small_file = write_file(tmp_path, "small.py", 200)
+    big_file = write_file(tmp_path, "big.log", 300_000)
+
+    assert run_hook(hook_path, prompt_submit("scan the repo architecture", prompt_id=None)).returncode == 0
+    assert run_hook(hook_path, read_pre_tool_use("s1", small_file, prompt_id=None)).returncode == 0
+
+    result = run_hook(hook_path, read_pre_tool_use("s1", big_file, prompt_id=None))
+
+    assert result.returncode == 0
+    assert "KB" in json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+    decisions = [json.loads(line)["decision"] for line in nudges_log(tmp_path).read_text(encoding="utf-8").splitlines()]
+    assert decisions == ["nudge", "pre_tool_followup", "size_nudge"]
 
 
 def test_size_nudge_still_fires_after_prompt_nudge_and_followup(tmp_path: Path) -> None:

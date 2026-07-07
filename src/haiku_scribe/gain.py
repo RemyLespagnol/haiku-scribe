@@ -28,6 +28,8 @@ class GainReport:
     large_reads_flagged: int  # size-gated "size_nudge" events
     bytes_flagged: int  # sum of size_bytes across size_nudge events
     followups: int  # "pre_tool_followup": nudge ignored, raw read anyway
+    prompt_id_events: int = 0  # nudge/followup events keyed by a real prompt_id
+    fallback_events: int = 0  # nudge/followup events keyed by a fallback hash
 
     @property
     def compliance(self) -> float | None:
@@ -36,10 +38,18 @@ class GainReport:
             return None
         return max(0.0, 1 - self.followups / self.prompts_flagged)
 
+    @property
+    def high_confidence(self) -> bool:
+        """True when every nudge/followup event carried a real prompt_id.
+        Fallback keys attribute follow-ups to the latest flagged prompt, so
+        compliance may be over- or under-counted."""
+        return self.fallback_events == 0
+
 
 def build_report(log_path: Path) -> GainReport:
     prompts = large = followups = 0
     total_bytes = 0
+    prompt_id_events = fallback_events = 0
     if log_path.exists():
         text = log_path.read_text(encoding="utf-8", errors="replace")
         for line in text.splitlines():
@@ -60,7 +70,15 @@ def build_report(log_path: Path) -> GainReport:
                     pass
             elif decision == "pre_tool_followup":
                 followups += 1
-    return GainReport(prompts, large, total_bytes, followups)
+            if decision in ("nudge", "pre_tool_followup"):
+                # Older hook versions have no "identity" field; classify by
+                # whether they carried a prompt_id at all.
+                identity = event.get("identity")
+                if identity == "prompt_id" or (identity is None and event.get("prompt_id")):
+                    prompt_id_events += 1
+                else:
+                    fallback_events += 1
+    return GainReport(prompts, large, total_bytes, followups, prompt_id_events, fallback_events)
 
 
 def format_report(report: GainReport) -> str:
@@ -73,6 +91,19 @@ def format_report(report: GainReport) -> str:
     ]
     if report.compliance is not None:
         lines.append(f"  Nudge compliance:           {report.compliance * 100:.0f}%")
+    if report.prompt_id_events or report.fallback_events:
+        lines.append(
+            f"  Prompt identity:            {report.prompt_id_events} with prompt_id"
+            f" / {report.fallback_events} fallback"
+        )
+        if report.high_confidence:
+            lines.append("  Confidence: high — every nudge event carried a prompt_id.")
+        else:
+            lines.append(
+                "  Confidence: proxy-only — some events lacked prompt_id; fallback keys"
+                " attribute follow-ups to the latest flagged prompt, so compliance may"
+                " be over- or under-counted."
+            )
     lines.append(f"  Verdict: {_verdict(report)}")
     return "\n".join(lines)
 
