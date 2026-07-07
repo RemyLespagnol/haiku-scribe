@@ -85,6 +85,17 @@ def test_doctor_reports_agent_content_drift(tmp_path):
     assert "agent file drifted from current contract (run setup to restore)" in result.stdout
 
 
+def test_doctor_reports_hook_script_content_drift(tmp_path):
+    assert run_cli("setup", "--home", str(tmp_path)).returncode == 0
+    hook = tmp_path / ".claude" / "hooks" / "haiku-scribe-v1-2-nudge.py"
+    hook.write_text(hook.read_text(encoding="utf-8") + "\nextra trailing note\n", encoding="utf-8")
+
+    result = run_cli("doctor", "--home", str(tmp_path))
+
+    assert result.returncode == 1
+    assert "hook script drifted from current contract (run setup to restore)" in result.stdout
+
+
 def test_doctor_reports_guidance_block_drift(tmp_path):
     assert run_cli("setup", "--home", str(tmp_path)).returncode == 0
     guidance = tmp_path / ".claude" / "CLAUDE.md"

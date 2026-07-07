@@ -13,7 +13,7 @@ from haiku_scribe.contracts import (
 )
 from haiku_scribe.paths import ClaudePaths
 from haiku_scribe.settings import SettingsError, load_json_object
-from haiku_scribe.v1_2_hooks import hook_command_for, hook_path_for
+from haiku_scribe.v1_2_hooks import hook_command_for, hook_path_for, render_nudge_hook_script
 
 
 @dataclass(frozen=True)
@@ -86,6 +86,8 @@ def _check_v1_2_hook(paths: ClaudePaths, settings: dict[str, Any]) -> list[str]:
     failures: list[str] = []
     if not hook_path.exists():
         failures.append("missing V1.2 hook script")
+    elif hook_path.read_text(encoding="utf-8") != render_nudge_hook_script():
+        failures.append("hook script drifted from current contract (run setup to restore)")
 
     ownership = settings.get("haiku_scribe")
     if not isinstance(ownership, dict) or ownership.get("owned_v1_2_nudge_hook_command") != command:
