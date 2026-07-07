@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`haiku-scribe` is a personal installer (a Python CLI, no runtime dependencies) that provisions a read-only, Haiku-powered "context compression" subagent into a user's Claude Code config under `~/.claude`. It writes an agent file, a managed `CLAUDE.md` guidance block, safety deny rules, and V1.2 nudge hooks. It is **not** a runtime library — the "product" is the generated config, not imported code.
+`haiku-scribe` is a personal installer (a Python CLI, no runtime dependencies) that provisions a read-only, Haiku-powered "context compression" subagent into a user's Claude Code config under `~/.claude`. It writes an agent file, a managed `CLAUDE.md` guidance block, and safety deny rules, and can optionally install V1.2 nudge hooks via `setup --hooks on`. It is **not** a runtime library — the "product" is the generated config, not imported code.
 
 ## Commands
 
@@ -37,7 +37,7 @@ Two ideas govern everything:
 - **Agent file** `~/.claude/agents/haiku-scribe.md` — generated verbatim by `render_agent_markdown()` in `contracts.py`. The read-only contract (`tools: Read, Glob, Grep`, `model: haiku`, forbid edit/write/shell/web/MCP) lives here as a string literal.
 - **Guidance block** in `~/.claude/CLAUDE.md` — `render_guidance_block()` in `contracts.py`, inserted/replaced via marker comments.
 - **Deny rules** in `~/.claude/settings.json` — `DEFAULT_DENY_RULES` (secrets/creds globs), merged by `settings.py::merge_deny_rules`.
-- **V1.2 nudge hooks** — `v1_2_hooks.py` writes a standalone hook script (`render_nudge_hook_script()`, emitted as a string literal) and registers `UserPromptSubmit` plus `PreToolUse` (matcher `Read|Grep`) hooks in `settings.json`. Prompt nudges use conservative broad-context markers; `PreToolUse` adds one follow-up per flagged prompt. The hook also has a size-gated fallback for direct `Read` of files above `HAIKU_SCRIBE_SIZE_THRESHOLD` (default 256_000 bytes), logs decisions to `~/.claude/haiku-scribe-nudges.jsonl`, supports `HAIKU_SCRIBE_HOOKS=off`, and self-suppresses inside subagent transcripts.
+- **V1.2 nudge hooks** *(opt-in; `setup --hooks on`, off by default, and plain `setup` removes any Haiku-Scribe-owned hook)* — `v1_2_hooks.py` writes a standalone hook script (`render_nudge_hook_script()`, emitted as a string literal) and registers `UserPromptSubmit` plus `PreToolUse` (matcher `Read|Grep`) hooks in `settings.json`. Prompt nudges use conservative broad-context markers; `PreToolUse` adds one follow-up per flagged prompt. The hook also has a size-gated fallback for direct `Read` of files above `HAIKU_SCRIBE_SIZE_THRESHOLD` (default 256_000 bytes), logs decisions to `~/.claude/haiku-scribe-nudges.jsonl`, supports `HAIKU_SCRIBE_HOOKS=off`, and self-suppresses inside subagent transcripts.
 
 `doctor.py` re-derives all of the above and reports missing/invalid entries — it is the spec of what a healthy install looks like; keep it in sync when changing any generated content.
 
