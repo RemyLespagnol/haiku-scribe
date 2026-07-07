@@ -10,8 +10,13 @@ def load_runs(runs_dir: Path) -> list[dict]:
     runs: list[dict] = []
     for path in sorted(runs_dir.glob("*.jsonl")):
         for line in path.read_text().splitlines():
-            if line.strip():
-                runs.append(json.loads(line))
+            if not line.strip():
+                continue
+            record = json.loads(line)
+            # report.py is the CodeGraph Agent Bench report; skip records from
+            # other benchmarks (e.g. sweep.jsonl uses "task", not "task_id").
+            if isinstance(record, dict) and "task_id" in record:
+                runs.append(record)
     return runs
 
 

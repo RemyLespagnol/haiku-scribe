@@ -68,6 +68,28 @@ class ReportTests(unittest.TestCase):
             markdown,
         )
 
+    def test_load_runs_skips_records_without_task_id(self):
+        with tempfile.TemporaryDirectory() as directory:
+            runs_dir = Path(directory) / "runs"
+            runs_dir.mkdir()
+            # One conforming CodeGraph record and one foreign sweep record.
+            (runs_dir / "mixed.jsonl").write_text(
+                '{"task_id":"01-orientation","mode":"agent-codegraph","tool_calls":1,'
+                '"direct_file_reads":0,"large_outputs":0,"line_evidence_count":0,'
+                '"found_right_area":true,"edit_ready":false,'
+                '"estimated_context_cost":"low","input_tokens":1,"output_tokens":1,'
+                '"cache_creation_tokens":0,"cache_read_tokens":0,'
+                '"gross_tokens":2,"no_cache_tokens":2}\n'
+                '{"task":"whole-file","mode":"scout","total_cost":0.48,'
+                '"raw_into_main":69000,"correct":true}\n'
+            )
+            runs = load_runs(runs_dir)
+            self.assertEqual(len(runs), 1)
+            self.assertEqual(runs[0]["task_id"], "01-orientation")
+            # build must not raise on the filtered set.
+            report = build_markdown_report(runs)
+            self.assertIn("01-orientation", report)
+
 
 if __name__ == "__main__":
     unittest.main()
