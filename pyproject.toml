@@ -9,6 +9,9 @@ description = "Personal installer for the Haiku Scribe Claude Code subagent"
 requires-python = ">=3.11"
 dependencies = []
 
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
 [project.scripts]
 haiku-scribe = "haiku_scribe.cli:main"
 
