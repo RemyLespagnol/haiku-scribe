@@ -13,7 +13,12 @@ from haiku_scribe.contracts import (
 )
 from haiku_scribe.paths import ClaudePaths
 from haiku_scribe.settings import SettingsError, load_json_object
-from haiku_scribe.v1_2_hooks import hook_command_for, hook_path_for, render_nudge_hook_script
+from haiku_scribe.v1_2_hooks import (
+    PRE_TOOL_MATCHER,
+    hook_command_for,
+    hook_path_for,
+    render_nudge_hook_script,
+)
 
 
 @dataclass(frozen=True)
@@ -100,8 +105,8 @@ def _check_v1_2_hook(paths: ClaudePaths, settings: dict[str, Any]) -> list[str]:
 
     if not _group_has_command(hooks.get("UserPromptSubmit"), "", command):
         failures.append("missing V1.2 UserPromptSubmit hook")
-    if not _group_has_command(hooks.get("PreToolUse"), "Read|Grep", command):
-        failures.append("missing V1.2 PreToolUse hook with matcher Read|Grep")
+    if not _group_has_command(hooks.get("PreToolUse"), PRE_TOOL_MATCHER, command):
+        failures.append(f"missing V1.2 PreToolUse hook with matcher {PRE_TOOL_MATCHER}")
     return failures
 
 
@@ -116,8 +121,11 @@ def _hooks_present(paths: ClaudePaths, settings: dict[str, Any]) -> bool:
     if isinstance(hooks, dict):
         if _group_has_command(hooks.get("UserPromptSubmit"), "", command):
             return True
-        if _group_has_command(hooks.get("PreToolUse"), "Read|Grep", command):
-            return True
+        # "Read|Grep" is the pre-Task-matcher layout; still counts as an
+        # install so doctor reports the drift instead of skipping the checks.
+        for matcher in (PRE_TOOL_MATCHER, "Read|Grep"):
+            if _group_has_command(hooks.get("PreToolUse"), matcher, command):
+                return True
     return False
 
 

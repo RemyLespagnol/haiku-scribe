@@ -108,7 +108,7 @@ def test_setup_hooks_on_installs_v1_2_hooks(tmp_path: Path) -> None:
         {"matcher": "", "hooks": [{"type": "command", "command": command}]}
     ]
     assert settings["hooks"]["PreToolUse"] == [
-        {"matcher": "Read|Grep", "hooks": [{"type": "command", "command": command}]}
+        {"matcher": "Read|Grep|Task|Agent", "hooks": [{"type": "command", "command": command}]}
     ]
 
 
@@ -274,7 +274,7 @@ def test_doctor_fails_when_v1_2_pre_tool_matcher_wrong(tmp_path: Path) -> None:
     result = run_cli("doctor", "--home", str(tmp_path))
 
     assert result.returncode == 1
-    assert "missing V1.2 PreToolUse hook with matcher Read|Grep" in result.stdout
+    assert "missing V1.2 PreToolUse hook with matcher Read|Grep|Task|Agent" in result.stdout
 
 
 def test_doctor_fails_when_v1_2_hook_ownership_missing(tmp_path: Path) -> None:
@@ -288,3 +288,11 @@ def test_doctor_fails_when_v1_2_hook_ownership_missing(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "missing V1.2 hook ownership metadata" in result.stdout
+
+
+def test_gain_replay_cli_runs_read_only(tmp_path: Path) -> None:
+    result = run_cli("gain", "--replay", "--home", str(tmp_path))
+
+    assert result.returncode == 0
+    assert "Haiku Scribe replay" in result.stdout
+    assert not (tmp_path / ".claude").exists()

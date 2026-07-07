@@ -12,6 +12,9 @@ from haiku_scribe.settings import load_json_object
 
 HOOK_SCRIPT_NAME = "haiku-scribe-v1-2-nudge.py"
 OWNED_HOOK_COMMAND_KEY = "owned_v1_2_nudge_hook_command"
+# Task/Agent lets the hook observe haiku-scribe delegations (tool name varies
+# by Claude Code version), so `gain` can report nudges followed, not just ignored.
+PRE_TOOL_MATCHER = "Read|Grep|Task|Agent"
 
 
 @dataclass(frozen=True)
@@ -27,31 +30,54 @@ def render_nudge_hook_script() -> str:
 import hashlib
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 
-BROAD_PROMPT_MARKERS = (
-    "architecture",
-    "audit",
+# Strong markers flag broad reconnaissance on their own. Weak markers are
+# ambiguous alone ("implemented", "architecture" appear in tiny-edit prompts
+# too) and only count when two of them co-occur.
+STRONG_PROMPT_MARKERS = (
+    "call chain",
+    "call graph",
     "cartographie",
-    "codebase",
     "data flow",
     "explore the repo",
     "find all",
-    "implemented",
-    "large file",
     "log file",
     "map the flow",
-    "mapping",
     "plusieurs fichiers",
     "scan the repo",
+    "the codebase",
     "the logs",
     "trace the",
-    "transcript",
     "where does",
     "where is",
+    "who calls",
+)
+
+WEAK_PROMPT_MARKERS = (
+    "architecture",
+    "audit",
+    "codebase",
+    "diagnose",
+    "how does",
+    "implemented",
+    "investigate",
+    "large file",
+    "mapping",
+    "root cause",
+    "transcript",
+)
+
+# The prompt already carries exact content or an exact location; delegating
+# reconnaissance would add overhead over reading the named lines directly.
+NEGATIVE_PROMPT_PATTERNS = (
+    r"```",              # pasted snippet: the content is already in context
+    r"\\bline \\d+",     # exact line reference
+    r"\\.\\w{1,8}:\\d+",  # path.ext:line reference
 )
 
 NUDGE = (
@@ -169,6 +195,15 @@ def has_followup(events: list[dict], session_id: object, prompt_key: object) -> 
     )
 
 
+def has_delegation(events: list[dict], session_id: object, prompt_key: object) -> bool:
+    return any(
+        event.get("session_id") == session_id
+        and event_prompt_key(event) == prompt_key
+        and event.get("decision") == "delegation"
+        for event in events
+    )
+
+
 def has_initial_nudge(events: list[dict], session_id: object, prompt_key: object) -> bool:
     return any(
         event.get("session_id") == session_id
@@ -192,15 +227,46 @@ def main() -> int:
     return 0
 
 
+def classify_prompt(prompt: str) -> tuple[list[str], str | None]:
+    """Return (matched markers, negative pattern that suppressed the nudge)."""
+    strong = [m for m in STRONG_PROMPT_MARKERS if m in prompt]
+    weak = [m for m in WEAK_PROMPT_MARKERS if m in prompt]
+    if not strong and len(weak) < 2:
+        return [], None
+    for pattern in NEGATIVE_PROMPT_PATTERNS:
+        if re.search(pattern, prompt):
+            return strong + weak, pattern
+    return strong + weak, None
+
+
 def handle_user_prompt_submit(payload: dict) -> int:
     prompt = str(payload.get("prompt", "")).lower()
-    matched = [marker for marker in BROAD_PROMPT_MARKERS if marker in prompt]
+    matched, negative = classify_prompt(prompt)
     if not matched:
         return 0
 
     claude_dir = Path(__file__).resolve().parents[1]
     log_path = claude_dir / "haiku-scribe-nudges.jsonl"
     prompt_key, identity = make_prompt_key(payload)
+    if negative is not None:
+        # Audit-only: record the avoided nudge so `gain` can show how often
+        # the negative patterns fire, without injecting any context.
+        append_event(
+            log_path,
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "decision": "suppressed",
+                "reason": "negative_prompt_pattern",
+                "matched": matched,
+                "negative": negative,
+                "session_id": payload.get("session_id"),
+                "prompt_id": payload.get("prompt_id"),
+                "prompt_key": prompt_key,
+                "identity": identity,
+                "cwd": payload.get("cwd"),
+            },
+        )
+        return 0
     append_event(
         log_path,
         {
@@ -237,8 +303,33 @@ def handle_pre_tool_use(payload: dict) -> int:
     session_id = payload.get("session_id")
     prompt_key, identity = resolve_prompt_key(events, session_id, payload.get("prompt_id"))
 
+    if tool_name in {"Task", "Agent"}:
+        tool_input = payload.get("tool_input")
+        subagent = tool_input.get("subagent_type") if isinstance(tool_input, dict) else None
+        if subagent == "haiku-scribe":
+            # Direct signal: the scout actually ran. Lets `gain` report
+            # nudges followed, not just nudges ignored.
+            append_event(
+                log_path,
+                {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "decision": "delegation",
+                    "reason": "haiku_scribe_scout_spawned",
+                    "session_id": session_id,
+                    "prompt_id": payload.get("prompt_id"),
+                    "prompt_key": prompt_key,
+                    "identity": identity,
+                    "cwd": payload.get("cwd"),
+                },
+            )
+        return 0
+
     if prompt_key is not None and has_initial_nudge(events, session_id, prompt_key):
-        if tool_name in {"Read", "Grep"} and not has_followup(events, session_id, prompt_key):
+        if (
+            tool_name in {"Read", "Grep"}
+            and not has_followup(events, session_id, prompt_key)
+            and not has_delegation(events, session_id, prompt_key)
+        ):
             append_event(
                 log_path,
                 {
@@ -423,7 +514,7 @@ def merge_v1_2_hook(settings: dict[str, Any], command: str) -> dict[str, Any]:
     _append_group_once(
         pre_tool_groups,
         {
-            "matcher": "Read|Grep",
+            "matcher": PRE_TOOL_MATCHER,
             "hooks": [{"type": "command", "command": command}],
         },
     )

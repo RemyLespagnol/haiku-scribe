@@ -398,7 +398,7 @@ def test_prototype_hooks_install_is_idempotent(tmp_path: Path) -> None:
     assert len(settings["hooks"]["UserPromptSubmit"]) == 1
     pre_tool_groups = settings["hooks"]["PreToolUse"]
     assert len(pre_tool_groups) == 1
-    assert pre_tool_groups[0]["matcher"] == "Read|Grep"
+    assert pre_tool_groups[0]["matcher"] == "Read|Grep|Task|Agent"
     assert pre_tool_groups[0]["hooks"][0]["command"].endswith("haiku-scribe-v1-2-nudge.py")
     assert (tmp_path / ".claude" / "hooks" / "haiku-scribe-v1-2-nudge.py").exists()
 
@@ -483,7 +483,7 @@ def test_setup_migrates_legacy_v1_2_layout(tmp_path: Path) -> None:
     ]
     pre_tool_groups = settings["hooks"]["PreToolUse"]
     assert len(pre_tool_groups) == 1
-    assert pre_tool_groups[0]["matcher"] == "Read|Grep"
+    assert pre_tool_groups[0]["matcher"] == "Read|Grep|Task|Agent"
 
 
 def test_log_scan_is_capped_to_recent_tail(tmp_path: Path) -> None:
@@ -499,3 +499,92 @@ def test_log_scan_is_capped_to_recent_tail(tmp_path: Path) -> None:
 
     assert result.returncode == 0
     assert "haiku-scribe" in json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+
+
+def task_pre_tool_use(session_id: str, subagent: str, prompt_id: str | None = "p1") -> dict[str, object]:
+    payload: dict[str, object] = {
+        "hook_event_name": "PreToolUse",
+        "session_id": session_id,
+        "cwd": "/tmp/project",
+        "tool_name": "Task",
+        "tool_input": {"subagent_type": subagent, "prompt": "scout the repo"},
+    }
+    if prompt_id is not None:
+        payload["prompt_id"] = prompt_id
+    return payload
+
+
+def test_weak_markers_alone_do_not_trigger(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+
+    for prompt in (
+        "check the architecture",
+        "audit this function",
+        "i implemented the fix",
+        "keyboard mapping is broken",
+        "investigate please",
+        "how does this work",
+    ):
+        result = run_hook(hook_path, prompt_submit(prompt, prompt_id=f"prompt-{prompt}"))
+        assert result.returncode == 0
+        assert result.stdout == ""
+
+    assert not nudges_log(tmp_path).exists()
+
+
+def test_two_weak_markers_trigger_nudge(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+
+    result = run_hook(hook_path, prompt_submit("audit the architecture of this service"))
+
+    assert result.returncode == 0
+    assert "haiku-scribe" in json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+
+
+def test_negative_patterns_suppress_nudge_and_log_it(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+
+    for i, prompt in enumerate(
+        (
+            "where is the bug in this snippet ```py\nx = 1\n```",
+            "trace the failure at gain.py:42",
+            "where is the check on line 42",
+        )
+    ):
+        result = run_hook(hook_path, prompt_submit(prompt, prompt_id=f"p{i}"))
+        assert result.returncode == 0
+        assert result.stdout == ""
+
+    events = [json.loads(line) for line in nudges_log(tmp_path).read_text(encoding="utf-8").splitlines()]
+    assert [e["decision"] for e in events] == ["suppressed"] * 3
+    assert all(e["reason"] == "negative_prompt_pattern" for e in events)
+
+
+def test_haiku_scribe_delegation_is_logged_and_suppresses_followup(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+    small_file = write_file(tmp_path, "small.txt", 10)
+
+    assert run_hook(hook_path, prompt_submit("scan the repo architecture", prompt_id="p1")).returncode == 0
+    task_result = run_hook(hook_path, task_pre_tool_use("s1", "haiku-scribe", prompt_id="p1"))
+    assert task_result.returncode == 0
+    assert task_result.stdout == ""
+
+    read_result = run_hook(hook_path, read_pre_tool_use("s1", small_file, prompt_id="p1"))
+    assert read_result.returncode == 0
+    assert read_result.stdout == ""
+
+    decisions = [
+        json.loads(line)["decision"]
+        for line in nudges_log(tmp_path).read_text(encoding="utf-8").splitlines()
+    ]
+    assert decisions == ["nudge", "delegation"]
+
+
+def test_other_subagent_task_is_not_logged(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+
+    result = run_hook(hook_path, task_pre_tool_use("s1", "explore"))
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert not nudges_log(tmp_path).exists()

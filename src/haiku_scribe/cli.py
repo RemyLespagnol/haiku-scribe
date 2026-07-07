@@ -33,6 +33,11 @@ def build_parser() -> argparse.ArgumentParser:
     uninstall.add_argument("--home", type=Path, default=Path.home(), help=argparse.SUPPRESS)
 
     gain = subparsers.add_parser("gain", help="Report nudge activity and ignored-nudge (double-read) rate")
+    gain.add_argument(
+        "--replay",
+        action="store_true",
+        help="Dry-run the current prompt markers over past Claude Code transcripts (read-only)",
+    )
     gain.add_argument("--home", type=Path, default=Path.home(), help=argparse.SUPPRESS)
 
     prototype_hooks = subparsers.add_parser("prototype-hooks", help="Experimental V1.2 Claude Code hook prototype")
@@ -94,10 +99,14 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "gain":
-        from haiku_scribe.gain import build_report, format_report
+        from haiku_scribe.gain import build_report, format_replay, format_report, replay_prompts
         from haiku_scribe.paths import ClaudePaths
 
-        report = build_report(ClaudePaths.for_home(args.home).nudge_log_path)
+        paths = ClaudePaths.for_home(args.home)
+        if args.replay:
+            print(format_replay(replay_prompts(paths.claude_dir / "projects")))
+            return 0
+        report = build_report(paths.nudge_log_path)
         print(format_report(report))
         return 0
 

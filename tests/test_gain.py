@@ -98,3 +98,89 @@ def test_fallback_events_report_proxy_only_confidence(tmp_path: Path) -> None:
     assert "1 with prompt_id / 3 fallback" in text
     assert "Confidence: proxy-only" in text
     assert "over- or under-counted" in text
+
+
+def test_delegation_and_suppression_reporting(tmp_path: Path) -> None:
+    log = tmp_path / "nudges.jsonl"
+    _write_log(
+        log,
+        [
+            {"decision": "nudge", "session_id": "s1", "prompt_id": "p1"},
+            {"decision": "nudge", "session_id": "s1", "prompt_id": "p2"},
+            {"decision": "delegation", "session_id": "s1", "prompt_id": "p1"},
+            {"decision": "delegation", "session_id": "s2", "prompt_id": "px"},  # organic, unflagged
+            {"decision": "suppressed"},
+        ],
+    )
+    report = build_report(log)
+    assert report.delegations == 2
+    assert report.nudges_delegated == 1
+    assert report.suppressed == 1
+
+    text = format_report(report)
+    assert "Scout delegations observed: 2 (direct signal)" in text
+    assert "Flagged prompts delegated:  1 of 2" in text
+    assert "audit-only" in text
+
+
+def test_verdict_prefers_direct_delegation_signal(tmp_path: Path) -> None:
+    log = tmp_path / "nudges.jsonl"
+    events = [{"decision": "nudge", "session_id": "s1", "prompt_id": f"p{i}"} for i in range(5)]
+    events += [{"decision": "delegation", "session_id": "s1", "prompt_id": f"p{i}"} for i in range(3)]
+    _write_log(log, events)
+
+    report = build_report(log)
+    assert report.nudges_delegated == 3
+    assert "scout runs observed" in format_report(report)
+
+
+def test_replay_classifies_transcript_prompts(tmp_path: Path) -> None:
+    from haiku_scribe.gain import format_replay, replay_prompts
+
+    project = tmp_path / "projects" / "proj"
+    project.mkdir(parents=True)
+    lines = [
+        {"type": "user", "message": {"role": "user", "content": "scan the repo architecture"}},
+        {
+            "type": "user",
+            "message": {
+                "role": "user",
+                "content": [{"type": "text", "text": "where is the check on line 42"}],
+            },
+        },
+        {
+            "type": "user",
+            "message": {"role": "user", "content": [{"type": "tool_result", "content": "big dump"}]},
+        },
+        {"type": "user", "isSidechain": True, "message": {"role": "user", "content": "scan the repo"}},
+        {"type": "user", "message": {"role": "user", "content": "<command-name>/gain</command-name>"}},
+        {"type": "assistant", "message": {"role": "assistant", "content": "explore the repo"}},
+        {"type": "user", "message": {"role": "user", "content": "fix the typo"}},
+        "not json",
+    ]
+    (project / "t.jsonl").write_text(
+        "\n".join(json.dumps(line) if isinstance(line, dict) else line for line in lines) + "\n",
+        encoding="utf-8",
+    )
+
+    report = replay_prompts(tmp_path / "projects")
+    assert report.files_scanned == 1
+    assert report.prompts_seen == 3  # nudge candidate, suppressed, silent
+    assert report.would_nudge == 1
+    assert report.would_suppress == 1
+    assert ("scan the repo", 1) in report.marker_counts
+
+    text = format_replay(report)
+    assert "Would have nudged:         1" in text
+    assert "Would have suppressed:     1" in text
+    assert "scan the repo" in text
+    assert "Audit-only signal" in text
+
+
+def test_replay_without_transcripts_reports_zero(tmp_path: Path) -> None:
+    from haiku_scribe.gain import format_replay, replay_prompts
+
+    report = replay_prompts(tmp_path / "projects")
+    assert report.files_scanned == 0
+    assert report.prompts_seen == 0
+    assert "No transcripts found" in format_replay(report)
