@@ -92,7 +92,9 @@ haiku-scribe uninstall --dry-run
 `setup --hooks on`) and reports how often broad reconnaissance was flagged,
 how much large-file context was deferrable, and how often a nudge was ignored
 by a raw read anyway — the double-read signal that decides whether the scout
-is actually paying off.
+is actually paying off. It ends with a one-line verdict (keep hooks on,
+audit-only, or not enough signal yet); all figures are proxy signals from the
+nudge log, not measured token savings.
 
 The CLI installs Haiku Scribe into the current user's Claude Code
 configuration under `~/.claude`. It does not yet support per-project

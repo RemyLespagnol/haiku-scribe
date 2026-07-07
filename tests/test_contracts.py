@@ -24,6 +24,7 @@ def test_guidance_defines_broad_context_and_anti_double_read() -> None:
     assert "4+ files;" in guidance
     assert "large files;" in guidance
     assert "architecture review, flow mapping, pattern audit, unfamiliar-area exploration;" in guidance
+    assert "locating where a feature is implemented or used across unfamiliar code;" in guidance
     assert "Avoid the costly double-read pattern" in guidance
 
 

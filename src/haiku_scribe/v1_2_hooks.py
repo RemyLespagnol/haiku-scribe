@@ -35,14 +35,22 @@ BROAD_PROMPT_MARKERS = (
     "architecture",
     "audit",
     "cartographie",
+    "codebase",
     "data flow",
     "explore the repo",
+    "find all",
+    "implemented",
     "large file",
+    "log file",
     "map the flow",
     "mapping",
     "plusieurs fichiers",
     "scan the repo",
+    "the logs",
+    "trace the",
     "transcript",
+    "where does",
+    "where is",
 )
 
 NUDGE = (
@@ -220,7 +228,9 @@ def handle_pre_tool_use(payload: dict) -> int:
                     }
                 )
             )
-        return 0
+            return 0
+        # Followup already spent (or tool untracked): fall through so the
+        # size-gated large-file nudge keeps working after a prompt nudge.
 
     if tool_name != "Read":
         return 0

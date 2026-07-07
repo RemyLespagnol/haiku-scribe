@@ -73,6 +73,21 @@ def format_report(report: GainReport) -> str:
     ]
     if report.compliance is not None:
         lines.append(f"  Nudge compliance:           {report.compliance * 100:.0f}%")
-    if report.prompts_flagged == 0 and report.large_reads_flagged == 0:
-        lines.append("  No activity logged yet — enable hooks with `setup --hooks on`.")
+    lines.append(f"  Verdict: {_verdict(report)}")
     return "\n".join(lines)
+
+
+def _verdict(report: GainReport) -> str:
+    """One honest, decision-useful line. All figures are proxy signals —
+    the log proves nudge activity, never actual token savings."""
+    total = report.prompts_flagged + report.large_reads_flagged
+    if total == 0:
+        return "no activity logged yet — enable hooks with `setup --hooks on`."
+    if total < 5:
+        return "not enough signal yet — keep hooks on and re-check after more sessions."
+    if report.compliance is None or report.compliance >= 0.5:
+        return "nudges are mostly followed (proxy signal) — keep hooks on."
+    return (
+        "most nudges are ignored — hooks are audit-only right now; "
+        "keep them for measurement or remove with plain `setup`."
+    )

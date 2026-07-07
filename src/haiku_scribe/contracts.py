@@ -111,6 +111,7 @@ Use `haiku-scribe` when remaining work is broad context gathering:
 - directory or repository survey;
 - logs, bundles, generated output, transcripts, or large docs;
 - architecture review, flow mapping, pattern audit, unfamiliar-area exploration;
+- locating where a feature is implemented or used across unfamiliar code;
 - evidence extraction before broad reasoning.
 
 Prefer `haiku-scribe` over the built-in Explore agent for bulk digestion and evidence extraction; use Explore only when the search itself needs parent-model reasoning.

@@ -121,7 +121,20 @@ def test_removed_markers_do_not_trigger_by_themselves(tmp_path: Path) -> None:
 def test_specific_markers_trigger_nudge(tmp_path: Path) -> None:
     hook_path = write_hook(tmp_path)
 
-    for marker in ("scan the repo", "explore the repo", "map the flow", "data flow", "plusieurs fichiers"):
+    for marker in (
+        "scan the repo",
+        "explore the repo",
+        "map the flow",
+        "data flow",
+        "plusieurs fichiers",
+        "where is retry implemented",
+        "where does auth happen",
+        "search the codebase",
+        "find all callers",
+        "compress the log file",
+        "summarize the logs",
+        "trace the request path",
+    ):
         result = run_hook(hook_path, prompt_submit(marker, prompt_id=f"prompt-{marker}"))
         assert result.returncode == 0
         assert "haiku-scribe" in json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
@@ -141,6 +154,24 @@ def test_pre_tool_hook_reinforces_prompt_nudge_once_for_read_or_grep(tmp_path: P
     assert second.stdout == ""
     decisions = [json.loads(line)["decision"] for line in nudges_log(tmp_path).read_text(encoding="utf-8").splitlines()]
     assert decisions == ["nudge", "pre_tool_followup"]
+
+
+def test_size_nudge_still_fires_after_prompt_nudge_and_followup(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+    small_file = write_file(tmp_path, "small.py", 200)
+    big_file = write_file(tmp_path, "big.log", 300_000)
+
+    assert run_hook(hook_path, prompt_submit("scan the repo architecture")).returncode == 0
+    followup = run_hook(hook_path, read_pre_tool_use("s1", small_file))
+    assert "haiku-scribe" in json.loads(followup.stdout)["hookSpecificOutput"]["additionalContext"]
+
+    result = run_hook(hook_path, read_pre_tool_use("s1", big_file))
+
+    assert result.returncode == 0
+    output = json.loads(result.stdout)
+    assert "KB" in output["hookSpecificOutput"]["additionalContext"]
+    decisions = [json.loads(line)["decision"] for line in nudges_log(tmp_path).read_text(encoding="utf-8").splitlines()]
+    assert decisions == ["nudge", "pre_tool_followup", "size_nudge"]
 
 
 def test_large_file_triggers_size_nudge(tmp_path: Path) -> None:
