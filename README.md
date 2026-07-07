@@ -4,21 +4,73 @@
   </picture>
 </p>
 
-# Haiku Scribe
+<h1 align="center">Haiku Scribe</h1>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](./pyproject.toml)
+<p align="center">
+  <b>Stop burning your main Claude session's context on reconnaissance.</b><br>
+  A read-only, Haiku-powered scout that reads, greps, and compresses the repo
+  before your real model has to look at it.
+</p>
 
-Haiku Scribe is a personal installer for a read-only, Haiku-powered
-"context compression" subagent for Claude Code.
+<p align="center">
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="./pyproject.toml"><img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+"></a>
+  <a href="#status"><img src="https://img.shields.io/badge/status-v1%20personal%20installer-informational" alt="Status"></a>
+</p>
 
-The subagent handles broad repository reconnaissance — reading, searching,
-mapping, and compressing files, logs, transcripts, and other generated
-output into a compact evidence brief. The main Claude session keeps the
-work that needs stronger reasoning: debugging conclusions, architecture
-decisions, security judgments, edits, commits, and user-facing summaries.
+Every debugging session, every "where does X happen" question, every large
+log dump costs tokens *before* Claude does anything useful with them. Haiku
+Scribe installs a cheap, read-only subagent (`Read`, `Glob`, `Grep` only,
+running on Haiku) whose only job is to go look around and hand back a
+compact brief — evidence, unknowns, and exactly which files are worth a
+direct read. Your main session verifies the important parts and does the
+actual thinking, editing, and deciding.
 
 Haiku Scribe is not a fixer, a coding agent, or a subagent team. It's a scout.
+
+## Quick Start
+
+```bash
+git clone https://github.com/RemyLespagnol/haiku-scribe.git
+cd haiku-scribe && python3 -m venv .venv && source .venv/bin/activate
+python -m pip install -e .
+
+haiku-scribe setup --dry-run   # preview what would change
+haiku-scribe setup             # install into ~/.claude
+haiku-scribe doctor            # verify the install
+```
+
+Then, in a Claude Code session:
+
+```text
+Use haiku-scribe to map every file that touches the checkout flow and
+summarize how payment status transitions. Do not make final conclusions.
+```
+
+## What You Get Back
+
+Instead of Claude reading a dozen files itself, the subagent hands back
+something like this:
+
+```text
+## Summary
+- Checkout flow starts in src/checkout/session.py:createSession.
+- Payment status transitions live in src/payments/state_machine.py.
+- Webhook handler mutates status without going through the state machine.
+
+## Evidence
+- src/payments/state_machine.py:42: transitions are validated here.
+- src/webhooks/stripe.py:88: status is set directly, bypassing validate().
+
+## Unknowns And Risks
+- Unclear whether the webhook path is intentional or a gap.
+
+## Suggested Direct Reads
+- src/webhooks/stripe.py:70-95: verify before treating this as a bug.
+```
+
+The main session then reads those ~25 lines directly instead of five whole
+files, and makes the actual call on whether it's a bug.
 
 ## Status
 
@@ -102,28 +154,11 @@ flowchart LR
 | Shell commands                 | No             | Yes                             |
 | MCP / CodeGraph access         | No (base agent) | Optional                       |
 
-## Installation
+## Installation Details
 
 This repository is currently intended for local development and personal
-use from source.
-
-```bash
-git clone https://github.com/RemyLespagnol/haiku-scribe.git
-cd haiku-scribe
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e .
-```
-
-Requires Python 3.11+.
-
-Install into your Claude Code configuration:
-
-```bash
-haiku-scribe setup --dry-run
-haiku-scribe setup
-haiku-scribe doctor
-```
+use from source (see [Quick Start](#quick-start) above). Requires Python
+3.11+.
 
 `setup` writes or updates:
 
@@ -236,30 +271,6 @@ Don't delegate when:
   content;
 - the content appears secret-bearing and the user hasn't explicitly asked
   for it to be inspected.
-
-## Example Prompt
-
-```text
-Use haiku-scribe to map every file that touches the checkout flow and
-summarize how payment status transitions. Do not make final conclusions.
-```
-
-Expected response shape:
-
-```text
-## Summary
-- Two to six bullets with the compressed answer.
-
-## Evidence
-- path/to/file.ext:line — Relevant observed fact.
-
-## Unknowns And Risks
-- Missing context, ambiguity, confidence limits.
-
-## Suggested Direct Reads
-- path/to/file.ext:line — Why the main Claude session should inspect this
-  exact location.
-```
 
 ## Development
 
