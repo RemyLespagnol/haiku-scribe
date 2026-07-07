@@ -40,17 +40,18 @@ haiku-scribe setup             # install into ~/.claude
 haiku-scribe doctor            # verify the install
 ```
 
-Then, in a Claude Code session:
-
-```text
-Use haiku-scribe to map every file that touches the checkout flow and
-summarize how payment status transitions. Do not make final conclusions.
-```
+That's it — nothing left to invoke by hand. `setup` also drops a guidance
+block into `~/.claude/CLAUDE.md` that teaches your main Claude session
+*when* to delegate (4+ files, logs, unfamiliar-area exploration, large
+docs) and when to just read directly (small, known, exact-detail tasks).
+From then on, Claude decides on its own to route broad reconnaissance
+through `haiku-scribe` before it burns your context on it — you can still
+say "use haiku-scribe to ..." explicitly, but you shouldn't need to.
 
 ## What You Get Back
 
-Instead of Claude reading a dozen files itself, the subagent hands back
-something like this:
+When Claude delegates, instead of reading a dozen files itself it gets
+back something like this:
 
 ```text
 ## Summary
@@ -246,12 +247,14 @@ can remove only the content it owns.
 
 ## When To Use It
 
-Use Haiku Scribe before the main Claude session loads broad raw context.
-Don't delegate and then re-read the same raw source broadly — either ask
-for a structured extraction that's useful enough to continue with, or read
+This is the routing logic the guidance block installs — your main Claude
+session applies it on its own, before loading broad raw context. Don't
+delegate and then re-read the same raw source broadly — either ask for a
+structured extraction that's useful enough to continue with, or read
 directly when the task needs exact line-level detail.
 
-Good delegation triggers:
+Good delegation triggers (things the main session recognizes on its own,
+or that you can say explicitly):
 
 - "Map the relevant files before we debug this."
 - "Summarize this large file without recommendations."
