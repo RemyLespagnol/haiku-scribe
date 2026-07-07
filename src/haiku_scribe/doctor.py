@@ -4,7 +4,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from haiku_scribe.contracts import DEFAULT_DENY_RULES, GUIDANCE_END, GUIDANCE_START
+from haiku_scribe.contracts import (
+    DEFAULT_DENY_RULES,
+    GUIDANCE_END,
+    GUIDANCE_START,
+    render_agent_markdown,
+    render_guidance_block,
+)
 from haiku_scribe.paths import ClaudePaths
 from haiku_scribe.settings import SettingsError, load_json_object
 from haiku_scribe.v1_2_hooks import hook_command_for, hook_path_for
@@ -36,6 +42,8 @@ def _check_agent_file(agent_path: Path) -> list[str]:
     for failure, fragment in required_fragments:
         if fragment not in agent:
             failures.append(failure)
+    if agent != render_agent_markdown():
+        failures.append("agent file drifted from current contract (run setup to restore)")
     return failures
 
 
@@ -44,8 +52,16 @@ def _check_guidance_file(guidance_path: Path) -> list[str]:
         return ["missing CLAUDE.md guidance block"]
 
     guidance = guidance_path.read_text(encoding="utf-8")
-    if GUIDANCE_START not in guidance or GUIDANCE_END not in guidance:
+    start = guidance.find(GUIDANCE_START)
+    end = guidance.find(GUIDANCE_END)
+    if start == -1 or end == -1 or end < start:
         return ["missing CLAUDE.md guidance block"]
+
+    installed_block = guidance[start : end + len(GUIDANCE_END)]
+    rendered = render_guidance_block()
+    expected_block = rendered[rendered.find(GUIDANCE_START) : rendered.find(GUIDANCE_END) + len(GUIDANCE_END)]
+    if installed_block != expected_block:
+        return ["CLAUDE.md guidance block drifted from current contract (run setup to restore)"]
     return []
 
 

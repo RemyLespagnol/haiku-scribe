@@ -72,3 +72,31 @@ def test_doctor_reports_missing_deny_rule(tmp_path):
 
     assert result.returncode == 1
     assert "missing deny rule: Read(**/*credential*)" in result.stdout
+
+
+def test_doctor_reports_agent_content_drift(tmp_path):
+    assert run_cli("setup", "--home", str(tmp_path)).returncode == 0
+    agent = tmp_path / ".claude" / "agents" / "haiku-scribe.md"
+    agent.write_text(agent.read_text(encoding="utf-8") + "\nextra trailing note\n", encoding="utf-8")
+
+    result = run_cli("doctor", "--home", str(tmp_path))
+
+    assert result.returncode == 1
+    assert "agent file drifted from current contract (run setup to restore)" in result.stdout
+
+
+def test_doctor_reports_guidance_block_drift(tmp_path):
+    assert run_cli("setup", "--home", str(tmp_path)).returncode == 0
+    guidance = tmp_path / ".claude" / "CLAUDE.md"
+    text = guidance.read_text(encoding="utf-8")
+    # Simulate an external compressor mangling a line inside the managed block.
+    text = text.replace(
+        "Before loading raw repository context, classify remaining work.",
+        "Before loading raw repository context, classify remaining work.\nBefore loading raw repository context, classify remaining work.",
+    )
+    guidance.write_text(text, encoding="utf-8")
+
+    result = run_cli("doctor", "--home", str(tmp_path))
+
+    assert result.returncode == 1
+    assert "CLAUDE.md guidance block drifted from current contract (run setup to restore)" in result.stdout
