@@ -127,6 +127,27 @@ def test_setup_default_removes_previously_owned_hooks(tmp_path: Path) -> None:
     assert "Read(**/*credential*)" in settings["permissions"]["deny"]
 
 
+def test_setup_default_removes_orphaned_unowned_hooks(tmp_path: Path) -> None:
+    # Legacy/manually-edited install: hook entries exist in settings.json and the
+    # hook script exists on disk, but there is no haiku_scribe ownership key.
+    run_cli("setup", "--hooks", "on", "--home", str(tmp_path))
+
+    settings_path = tmp_path / ".claude" / "settings.json"
+    settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    settings.get("haiku_scribe", {}).pop("owned_v1_2_nudge_hook_command", None)
+    settings_path.write_text(json.dumps(settings), encoding="utf-8")
+
+    hook_path = tmp_path / ".claude" / "hooks" / "haiku-scribe-v1-2-nudge.py"
+    assert hook_path.exists()
+
+    result = run_cli("setup", "--home", str(tmp_path))
+
+    assert result.returncode == 0
+    assert not hook_path.exists()
+    settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    assert "hooks" not in settings
+
+
 def test_setup_creates_backups_for_existing_files(tmp_path: Path) -> None:
     claude = tmp_path / ".claude"
     (claude / "agents").mkdir(parents=True)

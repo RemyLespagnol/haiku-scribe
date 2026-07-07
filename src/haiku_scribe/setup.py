@@ -69,7 +69,9 @@ def setup_user(home: Path, dry_run: bool = False, install_hooks: bool = False) -
     if install_hooks:
         settings = merge_v1_2_hook(settings, hook_command)
     else:
-        remove_v1_2_hook(settings, prior_hook_command) if prior_hook_command else None
+        remove_v1_2_hook(settings, hook_command)
+        if prior_hook_command and prior_hook_command != hook_command:
+            remove_v1_2_hook(settings, prior_hook_command)
 
     settings_text = json.dumps(settings, indent=2, sort_keys=True) + "\n"
 
