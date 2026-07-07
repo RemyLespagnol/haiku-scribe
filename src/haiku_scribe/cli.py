@@ -32,6 +32,9 @@ def build_parser() -> argparse.ArgumentParser:
     uninstall.add_argument("--dry-run", action="store_true", help="Print planned removals without writing files")
     uninstall.add_argument("--home", type=Path, default=Path.home(), help=argparse.SUPPRESS)
 
+    gain = subparsers.add_parser("gain", help="Report nudge activity and ignored-nudge (double-read) rate")
+    gain.add_argument("--home", type=Path, default=Path.home(), help=argparse.SUPPRESS)
+
     prototype_hooks = subparsers.add_parser("prototype-hooks", help="Experimental V1.2 Claude Code hook prototype")
     prototype_subparsers = prototype_hooks.add_subparsers(dest="prototype_command", required=True)
     prototype_setup = prototype_subparsers.add_parser("setup", help="Install experimental prompt nudge hook")
@@ -88,6 +91,14 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         for path in result.removed:
             print(f"Removed {path}")
+        return 0
+
+    if args.command == "gain":
+        from haiku_scribe.gain import build_report, format_report
+        from haiku_scribe.paths import ClaudePaths
+
+        report = build_report(ClaudePaths.for_home(args.home).nudge_log_path)
+        print(format_report(report))
         return 0
 
     if args.command == "prototype-hooks":

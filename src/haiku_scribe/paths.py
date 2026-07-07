@@ -12,6 +12,7 @@ class ClaudePaths:
     agent_path: Path
     guidance_path: Path
     settings_path: Path
+    nudge_log_path: Path
 
     @classmethod
     def for_home(cls, home: Path) -> "ClaudePaths":
@@ -24,5 +25,6 @@ class ClaudePaths:
             agent_path=agents_dir / "haiku-scribe.md",
             guidance_path=claude_dir / "CLAUDE.md",
             settings_path=claude_dir / "settings.json",
+            nudge_log_path=claude_dir / "haiku-scribe-nudges.jsonl",
         )
 

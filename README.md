@@ -83,9 +83,16 @@ This repository contains a working Python CLI (V1 personal installer flow):
 haiku-scribe setup
 haiku-scribe setup --dry-run
 haiku-scribe doctor
+haiku-scribe gain
 haiku-scribe uninstall
 haiku-scribe uninstall --dry-run
 ```
+
+`gain` reads the V1.2 nudge log (`~/.claude/haiku-scribe-nudges.jsonl`, needs
+`setup --hooks on`) and reports how often broad reconnaissance was flagged,
+how much large-file context was deferrable, and how often a nudge was ignored
+by a raw read anyway — the double-read signal that decides whether the scout
+is actually paying off.
 
 The CLI installs Haiku Scribe into the current user's Claude Code
 configuration under `~/.claude`. It does not yet support per-project
