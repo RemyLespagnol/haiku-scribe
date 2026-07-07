@@ -384,3 +384,18 @@ def test_setup_migrates_legacy_v1_2_layout(tmp_path: Path) -> None:
     pre_tool_groups = settings["hooks"]["PreToolUse"]
     assert len(pre_tool_groups) == 1
     assert pre_tool_groups[0]["matcher"] == "Read|Grep"
+
+
+def test_log_scan_is_capped_to_recent_tail(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+    big_file = write_file(tmp_path, "big.log", 300_000)
+    log_path = nudges_log(tmp_path)
+    old_dedup = json.dumps({"decision": "size_nudge", "session_id": "s1", "file_path": str(big_file)})
+    filler = json.dumps({"decision": "size_nudge", "session_id": "old-session", "file_path": "/other.log"})
+    # The dedup entry sits before >1MB of filler, so a tail-capped scan must not see it.
+    log_path.write_text(old_dedup + "\n" + (filler + "\n") * 20_000, encoding="utf-8")
+
+    result = run_hook(hook_path, read_pre_tool_use("s1", big_file))
+
+    assert result.returncode == 0
+    assert "haiku-scribe" in json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]

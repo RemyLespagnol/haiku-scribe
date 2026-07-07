@@ -60,6 +60,7 @@ PRE_TOOL_NUDGE = (
 )
 
 DEFAULT_SIZE_THRESHOLD_BYTES = 256_000
+MAX_LOG_SCAN_BYTES = 1_000_000
 
 NUDGE_TEMPLATE = (
     "Haiku Scribe nudge: {path} is about {kb} KB and may dominate or overflow "
@@ -85,9 +86,17 @@ def append_event(log_path: Path, event: dict) -> None:
 
 
 def iter_events(log_path: Path):
+    # ponytail: tail-scan cap keeps per-call cost bounded; dedup memory is
+    # limited to the last ~1MB of events, which is fine for advisory nudges.
     if not log_path.exists():
         return
-    for line in log_path.read_text(encoding="utf-8").splitlines():
+    size = log_path.stat().st_size
+    with log_path.open("rb") as fh:
+        if size > MAX_LOG_SCAN_BYTES:
+            fh.seek(size - MAX_LOG_SCAN_BYTES)
+            fh.readline()
+        text = fh.read().decode("utf-8", errors="replace")
+    for line in text.splitlines():
         try:
             event = json.loads(line)
         except json.JSONDecodeError:
