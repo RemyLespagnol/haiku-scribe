@@ -108,3 +108,12 @@ def test_agent_response_shape_includes_structured_extraction() -> None:
 
     assert "### Structured Extraction" in agent
     assert "The main session should not need to re-read broad raw context" in agent
+
+
+def test_guidance_positions_against_builtin_explore() -> None:
+    guidance = render_guidance_block()
+
+    assert (
+        "Prefer `haiku-scribe` over the built-in Explore agent for bulk digestion and evidence "
+        "extraction; use Explore only when the search itself needs parent-model reasoning." in guidance
+    )

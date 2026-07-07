@@ -110,6 +110,8 @@ Use `haiku-scribe` when remaining work is broad context gathering:
 - architecture review, flow mapping, pattern audit, unfamiliar-area exploration;
 - evidence extraction before broad reasoning.
 
+Prefer `haiku-scribe` over the built-in Explore agent for bulk digestion and evidence extraction; use Explore only when the search itself needs parent-model reasoning.
+
 Avoid the costly double-read pattern. If the task needs exact, line-level detail immediately, read directly (offset/limit for large files) instead of delegating. If you delegate, ask for a structured extraction useful enough that you do not delegate and then re-read the same raw source.
 
 Workflow:
