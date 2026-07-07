@@ -105,6 +105,22 @@ def _check_v1_2_hook(paths: ClaudePaths, settings: dict[str, Any]) -> list[str]:
     return failures
 
 
+def _hooks_present(paths: ClaudePaths, settings: dict[str, Any]) -> bool:
+    if hook_path_for(paths).exists():
+        return True
+    ownership = settings.get("haiku_scribe")
+    if isinstance(ownership, dict) and ownership.get("owned_v1_2_nudge_hook_command"):
+        return True
+    command = hook_command_for(hook_path_for(paths))
+    hooks = settings.get("hooks")
+    if isinstance(hooks, dict):
+        if _group_has_command(hooks.get("UserPromptSubmit"), "", command):
+            return True
+        if _group_has_command(hooks.get("PreToolUse"), "Read|Grep", command):
+            return True
+    return False
+
+
 def _check_settings_file(paths: ClaudePaths) -> list[str]:
     settings_path = paths.settings_path
     if not settings_path.exists():
@@ -127,7 +143,8 @@ def _check_settings_file(paths: ClaudePaths) -> list[str]:
     for rule in DEFAULT_DENY_RULES:
         if rule not in deny:
             failures.append(f"missing deny rule: {rule}")
-    failures.extend(_check_v1_2_hook(paths, settings))
+    if _hooks_present(paths, settings):
+        failures.extend(_check_v1_2_hook(paths, settings))
     return failures
 
 
