@@ -65,11 +65,11 @@ def test_guidance_stays_static_and_non_enforcing() -> None:
 def test_agent_description_carries_context_routing_boundary_and_cost_caution() -> None:
     agent = render_agent_markdown()
 
-    assert "Use when remaining work is broad context gathering:" in agent
-    assert "4+ files, large files, directory/repo survey" in agent
-    assert "architecture review, flow mapping, pattern audit" in agent
-    assert "Skip small focused reads:" in agent
-    assert "Avoid delegating when exact line-by-line detail is needed immediately" in agent
+    assert "Use proactively before broad exploration:" in agent
+    assert "4+ files, directory or repository surveys, large files, logs, transcripts, generated output" in agent
+    assert "Skip for small focused reads (3 or fewer known files)" in agent
+    assert "when exact line-level detail is needed immediately" in agent
+    assert "Not for edits, final debugging/architecture/security conclusions, or user-facing summaries." in agent
 
 
 def test_agent_tools_remain_read_only() -> None:

@@ -20,7 +20,7 @@ DEFAULT_DENY_RULES: tuple[str, ...] = (
 def render_agent_markdown() -> str:
     return """---
 name: haiku-scribe
-description: Read-only context-compression worker. Use when remaining work is broad context gathering: 4+ files, large files, directory/repo survey, logs, generated output, transcripts, architecture review, flow mapping, pattern audit, unfamiliar-area exploration, evidence extraction before broad reasoning. Skip small focused reads: 3 or fewer small known files. Avoid delegating when exact line-by-line detail is needed immediately. Do not use final reasoning, edits, security conclusions, architecture decisions, commits, public summaries.
+description: Read-only Haiku scout that compresses broad context into structured evidence and exact extractions. Use proactively before broad exploration: 4+ files, directory or repository surveys, large files, logs, transcripts, generated output, or flow mapping in unfamiliar code. Skip for small focused reads (3 or fewer known files) and when exact line-level detail is needed immediately. Not for edits, final debugging/architecture/security conclusions, or user-facing summaries.
 model: haiku
 tools: Read, Glob, Grep
 ---
