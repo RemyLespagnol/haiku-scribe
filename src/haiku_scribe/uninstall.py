@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from haiku_scribe.markdown_blocks import remove_owned_block
@@ -14,7 +14,8 @@ from haiku_scribe.v1_2_hooks import hook_command_for, hook_path_for, remove_v1_2
 @dataclass(frozen=True)
 class UninstallResult:
     planned: list[str]
-    removed: list[Path]
+    removed: list[Path]  # files deleted outright
+    updated: list[Path] = field(default_factory=list)  # shared files rewritten minus owned content
 
 
 def uninstall_user(home: Path, dry_run: bool = False) -> UninstallResult:
@@ -23,6 +24,7 @@ def uninstall_user(home: Path, dry_run: bool = False) -> UninstallResult:
     hook_command = hook_command_for(hook_path)
     planned: list[str] = []
     removed: list[Path] = []
+    updated: list[Path] = []
 
     if paths.agent_path.exists():
         planned.append(f"Would remove {paths.agent_path}")
@@ -61,7 +63,7 @@ def uninstall_user(home: Path, dry_run: bool = False) -> UninstallResult:
         planned.append(f"Would remove {backup_root}")
 
     if dry_run:
-        return UninstallResult(planned=planned, removed=[])
+        return UninstallResult(planned=planned, removed=[], updated=[])
 
     if paths.agent_path.exists():
         paths.agent_path.unlink()
@@ -69,11 +71,11 @@ def uninstall_user(home: Path, dry_run: bool = False) -> UninstallResult:
 
     if guidance_changed:
         paths.guidance_path.write_text(remove_owned_block(guidance_text), encoding="utf-8")
-        removed.append(paths.guidance_path)
+        updated.append(paths.guidance_path)
 
     if settings_changed and settings is not None:
         paths.settings_path.write_text(json.dumps(settings, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        removed.append(paths.settings_path)
+        updated.append(paths.settings_path)
 
     if hook_path.exists():
         hook_path.unlink()
@@ -86,4 +88,4 @@ def uninstall_user(home: Path, dry_run: bool = False) -> UninstallResult:
             backup_root.unlink()
         removed.append(backup_root)
 
-    return UninstallResult(planned=planned, removed=removed)
+    return UninstallResult(planned=planned, removed=removed, updated=updated)

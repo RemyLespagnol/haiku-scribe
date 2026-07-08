@@ -41,31 +41,11 @@ def setup_user(home: Path, dry_run: bool = False, install_hooks: bool = False) -
     existing_settings = load_json_object(paths.settings_path) if paths.settings_path.exists() else {}
     prior_hook_command = owned_hook_command(existing_settings)
 
-    planned = [
-        f"Would write {paths.agent_path}",
-        f"Would update {paths.guidance_path}",
-        f"Would merge deny rules into {paths.settings_path}",
-    ]
-    if install_hooks:
-        planned.append(f"Would write {hook_path}")
-        planned.append(f"Would merge UserPromptSubmit and PreToolUse hooks into {paths.settings_path}")
-    else:
-        if hook_path.exists():
-            planned.append(f"Would remove {hook_path}")
-        if prior_hook_command:
-            planned.append(f"Would remove Haiku Scribe-owned hooks from {paths.settings_path}")
-
-    if dry_run:
-        return SetupResult(planned=planned, written=[], removed=[])
-
-    paths.agents_dir.mkdir(parents=True, exist_ok=True)
-    paths.claude_dir.mkdir(parents=True, exist_ok=True)
-
     agent_text = render_agent_markdown()
     guidance_existing = paths.guidance_path.read_text(encoding="utf-8") if paths.guidance_path.exists() else ""
     guidance_text = insert_or_replace_block(guidance_existing, render_guidance_block())
 
-    settings = merge_deny_rules(load_json_object(paths.settings_path), DEFAULT_DENY_RULES)
+    settings = merge_deny_rules(existing_settings, DEFAULT_DENY_RULES)
     if install_hooks:
         settings = merge_v1_2_hook(settings, hook_command)
     else:
@@ -74,6 +54,29 @@ def setup_user(home: Path, dry_run: bool = False, install_hooks: bool = False) -
             remove_v1_2_hook(settings, prior_hook_command)
 
     settings_text = json.dumps(settings, indent=2, sort_keys=True) + "\n"
+    current_settings = paths.settings_path.read_text(encoding="utf-8") if paths.settings_path.exists() else None
+    hook_text = render_nudge_hook_script()
+    current_hook_text = hook_path.read_text(encoding="utf-8") if hook_path.exists() else None
+
+    # Plan only actual changes, so a second `setup --dry-run` truthfully
+    # reports an already-installed state instead of re-listing every file.
+    planned: list[str] = []
+    if not paths.agent_path.exists() or paths.agent_path.read_text(encoding="utf-8") != agent_text:
+        planned.append(f"Would write {paths.agent_path}")
+    if guidance_existing != guidance_text:
+        planned.append(f"Would update {paths.guidance_path}")
+    if current_settings != settings_text:
+        planned.append(f"Would update {paths.settings_path}")
+    if install_hooks and current_hook_text != hook_text:
+        planned.append(f"Would write {hook_path}")
+    if not install_hooks and hook_path.exists():
+        planned.append(f"Would remove {hook_path}")
+
+    if dry_run:
+        return SetupResult(planned=planned, written=[], removed=[])
+
+    paths.agents_dir.mkdir(parents=True, exist_ok=True)
+    paths.claude_dir.mkdir(parents=True, exist_ok=True)
 
     written: list[Path] = []
     removed: list[Path] = []

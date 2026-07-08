@@ -588,3 +588,85 @@ def test_other_subagent_task_is_not_logged(tmp_path: Path) -> None:
     assert result.returncode == 0
     assert result.stdout == ""
     assert not nudges_log(tmp_path).exists()
+
+
+def test_french_broad_prompts_trigger_nudge(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+
+    for prompt in (
+        "regarde l'état du projet et dis-moi où on en est",
+        "fais le point sur l'etat du projet",
+        "dis-moi ce qu'il manque avant la release",
+        "qu'est-ce qui bloque en ce moment ?",
+        "fais un audit du projet complet",
+        "dis-moi ce qu’il manque avant la release",  # curly apostrophe
+    ):
+        result = run_hook(hook_path, prompt_submit(prompt, prompt_id=f"prompt-{prompt}"))
+        assert result.returncode == 0, prompt
+        assert "haiku-scribe" in json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"], prompt
+
+
+def test_french_small_edit_prompts_stay_silent(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+
+    for prompt in (
+        "corrige la faute de frappe dans le readme",
+        "renomme la variable user_id en account_id",
+        "ajoute un test pour cette fonction",
+        "update the license year",
+        "fix the typo in the title",
+    ):
+        result = run_hook(hook_path, prompt_submit(prompt, prompt_id=f"prompt-{prompt}"))
+        assert result.returncode == 0, prompt
+        assert result.stdout == "", prompt
+
+    assert not nudges_log(tmp_path).exists()
+
+
+def test_malformed_stdin_fails_open(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+
+    result = subprocess.run(
+        [sys.executable, str(hook_path)],
+        input="not json at all",
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout == ""
+    assert not nudges_log(tmp_path).exists()
+
+
+def test_unwritable_log_dir_fails_open_and_still_nudges(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+    claude_dir = tmp_path / ".claude"
+    claude_dir.chmod(0o555)
+    try:
+        result = run_hook(hook_path, prompt_submit("scan the repo architecture"))
+    finally:
+        claude_dir.chmod(0o755)
+
+    assert result.returncode == 0
+    assert "haiku-scribe" in json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
+    assert not nudges_log(tmp_path).exists()
+
+
+def test_log_rotates_past_size_cap(tmp_path: Path) -> None:
+    hook_path = write_hook(tmp_path)
+    big_file = write_file(tmp_path, "big.log", 300_000)
+    log_path = nudges_log(tmp_path)
+    filler = json.dumps({"decision": "size_nudge", "session_id": "old-session", "file_path": "/other.log"})
+    log_path.write_text((filler + "\n") * 65_000, encoding="utf-8")  # > 5 MB
+    assert log_path.stat().st_size > 5_000_000
+
+    result = run_hook(hook_path, read_pre_tool_use("s1", big_file))
+
+    assert result.returncode == 0
+    archive = log_path.with_name(log_path.name + ".1")
+    assert archive.exists()
+    log_lines = log_path.read_text(encoding="utf-8").splitlines()
+    assert len(log_lines) == 1
+    assert json.loads(log_lines[0])["decision"] == "size_nudge"

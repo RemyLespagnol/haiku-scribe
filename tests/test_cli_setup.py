@@ -52,6 +52,30 @@ def test_setup_dry_run_writes_nothing(tmp_path: Path) -> None:
     assert not (tmp_path / ".claude").exists()
 
 
+def test_setup_dry_run_is_truthful_after_install(tmp_path: Path) -> None:
+    assert run_cli("setup", "--hooks", "on", "--home", str(tmp_path)).returncode == 0
+
+    same = run_cli("setup", "--dry-run", "--hooks", "on", "--home", str(tmp_path))
+    downgrade = run_cli("setup", "--dry-run", "--home", str(tmp_path))
+
+    assert same.returncode == 0
+    assert "Would" not in same.stdout
+    assert "Nothing to change" in same.stdout
+    assert downgrade.returncode == 0
+    assert "Would remove" in downgrade.stdout
+    assert "haiku-scribe-v1-2-nudge.py" in downgrade.stdout
+
+
+def test_setup_second_run_reports_already_current(tmp_path: Path) -> None:
+    assert run_cli("setup", "--home", str(tmp_path)).returncode == 0
+
+    second = run_cli("setup", "--home", str(tmp_path))
+
+    assert second.returncode == 0
+    assert "Nothing to change" in second.stdout
+    assert "Wrote" not in second.stdout
+
+
 def test_setup_installs_agent_guidance_and_settings(tmp_path: Path) -> None:
     result = run_cli("setup", "--home", str(tmp_path))
 

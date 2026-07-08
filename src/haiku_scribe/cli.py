@@ -65,11 +65,15 @@ def main(argv: list[str] | None = None) -> int:
             print("Dry run: no files written")
             for item in result.planned:
                 print(item)
+            if not result.planned:
+                print("Nothing to change: install is already current")
         else:
             for path in result.written:
                 print(f"Wrote {path}")
             for path in result.removed:
                 print(f"Removed {path}")
+            if not result.written and not result.removed:
+                print("Nothing to change: install is already current")
         return 0
 
     if args.command == "doctor":
@@ -91,11 +95,13 @@ def main(argv: list[str] | None = None) -> int:
             if not result.planned:
                 print("Nothing to remove")
             return 0
-        if not result.removed:
+        if not result.removed and not result.updated:
             print("Nothing to remove")
             return 0
         for path in result.removed:
             print(f"Removed {path}")
+        for path in result.updated:
+            print(f"Updated {path} (removed Haiku Scribe-owned content only)")
         return 0
 
     if args.command == "gain":

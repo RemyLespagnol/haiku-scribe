@@ -40,15 +40,20 @@ from pathlib import Path
 # ambiguous alone ("implemented", "architecture" appear in tiny-edit prompts
 # too) and only count when two of them co-occur.
 STRONG_PROMPT_MARKERS = (
+    "audit du projet",
     "call chain",
     "call graph",
     "cartographie",
+    "ce qu'il manque",
     "data flow",
+    "etat du projet",
+    "état du projet",
     "explore the repo",
     "find all",
     "log file",
     "map the flow",
     "plusieurs fichiers",
+    "qu'est-ce qui bloque",
     "scan the repo",
     "the codebase",
     "the logs",
@@ -96,6 +101,7 @@ PRE_TOOL_NUDGE = (
 
 DEFAULT_SIZE_THRESHOLD_BYTES = 256_000
 MAX_LOG_SCAN_BYTES = 1_000_000
+MAX_LOG_BYTES = 5_000_000
 
 NUDGE_TEMPLATE = (
     "Haiku Scribe nudge: {path} is about {kb} KB and may dominate or overflow "
@@ -116,8 +122,15 @@ def should_skip_payload(payload: dict) -> bool:
 
 
 def append_event(log_path: Path, event: dict) -> None:
-    with log_path.open("a", encoding="utf-8") as log:
-        log.write(json.dumps(event, sort_keys=True) + "\\n")
+    # Best-effort: logging must never break the session (read-only home,
+    # full disk). Rotate once past MAX_LOG_BYTES, keeping one archive.
+    try:
+        if log_path.exists() and log_path.stat().st_size > MAX_LOG_BYTES:
+            log_path.replace(log_path.with_name(log_path.name + ".1"))
+        with log_path.open("a", encoding="utf-8") as log:
+            log.write(json.dumps(event, sort_keys=True) + "\\n")
+    except OSError:
+        pass
 
 
 def iter_events(log_path: Path):
@@ -229,6 +242,7 @@ def main() -> int:
 
 def classify_prompt(prompt: str) -> tuple[list[str], str | None]:
     """Return (matched markers, negative pattern that suppressed the nudge)."""
+    prompt = prompt.replace("\\u2019", "'")  # curly apostrophe, for FR markers
     strong = [m for m in STRONG_PROMPT_MARKERS if m in prompt]
     weak = [m for m in WEAK_PROMPT_MARKERS if m in prompt]
     if not strong and len(weak) < 2:
@@ -405,7 +419,11 @@ def handle_pre_tool_use(payload: dict) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        code = main()
+    except Exception:
+        code = 0  # fail-open: an advisory hook must never block Claude Code
+    raise SystemExit(code)
 '''
 
 

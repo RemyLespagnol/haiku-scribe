@@ -105,6 +105,20 @@ def test_uninstall_ignores_malformed_settings_but_removes_other_owned_files(tmp_
     assert settings_path.read_text(encoding="utf-8") == "{broken"
 
 
+def test_uninstall_output_distinguishes_removed_and_updated(tmp_path: Path) -> None:
+    assert run_cli("setup", "--home", str(tmp_path)).returncode == 0
+
+    result = run_cli("uninstall", "--home", str(tmp_path))
+
+    assert result.returncode == 0
+    lines = result.stdout.splitlines()
+    assert any(line.startswith("Removed ") and line.endswith("haiku-scribe.md") for line in lines)
+    assert any(line.startswith("Updated ") and "CLAUDE.md" in line for line in lines)
+    assert any(line.startswith("Updated ") and "settings.json" in line for line in lines)
+    # shared files are updated in place, never reported as removed
+    assert not any(line.startswith("Removed ") and "settings.json" in line for line in lines)
+
+
 def test_uninstall_is_idempotent(tmp_path: Path) -> None:
     assert run_cli("setup", "--home", str(tmp_path)).returncode == 0
 
