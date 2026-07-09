@@ -7,6 +7,10 @@
 [![CI](https://github.com/RemyLespagnol/haiku-scribe/actions/workflows/ci.yml/badge.svg)](https://github.com/RemyLespagnol/haiku-scribe/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
+<p align="center">
+  <img src="./assets/demo.gif" alt="haiku-scribe auto-routing a survey to the Haiku scout" width="700">
+</p>
+
 A Claude Code **plugin** that installs one thing: `haiku-scribe`, a read-only,
 Haiku-powered subagent that compresses broad context — repository surveys, logs,
 transcripts, generated output, flow mapping across unfamiliar code — into a
@@ -125,3 +129,4 @@ secret could surface in an extract you explicitly asked for.
 `docs/superpowers/` is a private development workspace — not part of the shipped
 plugin (Claude Code loads only `agents/` and `hooks/`). Run the contract test with
 `python3 test_contract.py`.
+- Demo GIF: edit `assets/demo.tape`, regenerate with `vhs assets/demo.tape` ([charmbracelet/vhs](https://github.com/charmbracelet/vhs)).
