@@ -4,6 +4,8 @@
 
 # haiku-scribe
 
+> _Offload broad reading to a cheap Haiku scout — keep your main model's context for thinking._
+
 [![CI](https://github.com/RemyLespagnol/haiku-scribe/actions/workflows/ci.yml/badge.svg)](https://github.com/RemyLespagnol/haiku-scribe/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
