@@ -2,7 +2,7 @@
 Output assets/demo.gif
 Set FontSize 20
 Set Width 1100
-Set Height 640
+Set Height 360
 Set Theme "Catppuccin Mocha"
 Set TypingSpeed 40ms
 Set PlaybackSpeed 1.0
