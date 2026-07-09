@@ -1,0 +1,15 @@
+{
+  "name": "haiku-scribe",
+  "owner": {
+    "name": "Remy Lespagnol"
+  },
+  "description": "Haiku Scribe: a read-only Haiku context-compression subagent.",
+  "plugins": [
+    {
+      "name": "haiku-scribe",
+      "source": "./",
+      "description": "Read-only Haiku scout that compresses broad context into structured evidence, saving main-context headroom and stretching the Pro/Max cap.",
+      "category": "productivity"
+    }
+  ]
+}
