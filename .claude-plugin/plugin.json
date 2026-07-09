@@ -1,6 +1,6 @@
 {
   "name": "haiku-scribe",
-  "version": "2.0.0",
+  "version": "0.1.0",
   "description": "Read-only Haiku scout subagent that compresses broad context (surveys, logs, transcripts, unfamiliar flow) into structured evidence, saving main-context headroom and stretching the Pro/Max cap.",
   "author": {
     "name": "Remy Lespagnol"

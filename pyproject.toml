@@ -1,6 +1,6 @@
 [project]
 name = "haiku-scribe"
-version = "2.0.0"
+version = "0.1.0"
 description = "Claude Code plugin: read-only Haiku context-compression subagent"
 requires-python = ">=3.11"
 dependencies = []
