@@ -4,49 +4,70 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`haiku-scribe` is a personal installer (a Python CLI, no runtime dependencies) that provisions a read-only, Haiku-powered "context compression" subagent into a user's Claude Code config under `~/.claude`. It writes an agent file, a managed `CLAUDE.md` guidance block, and safety deny rules, and can optionally install V1.2 nudge hooks via `setup --hooks on`. It is **not** a runtime library — the "product" is the generated config, not imported code.
+`haiku-scribe` is a **Claude Code plugin** (not a program). It ships one thing: a
+read-only, Haiku-powered "context compression" subagent. The product is a small
+set of **static files** a user installs via `/plugin` — there is no build step, no
+runtime code, no generated config. Editing behavior means editing these files
+directly.
+
+This repo is simultaneously the plugin and its own single-entry marketplace, so
+`/plugin marketplace add <git-url>` + `/plugin install haiku-scribe` works from
+this one repo.
 
 ## Commands
 
 ```bash
-python -m pytest                    # run all tests
-python -m pytest tests/test_cli_setup.py -k merge   # single test / filter
-ruff check                          # lint
-
-python -m haiku_scribe setup --dry-run   # preview install (also: haiku-scribe setup)
-python -m haiku_scribe setup
-python -m haiku_scribe doctor            # validate an install
-python -m haiku_scribe uninstall --dry-run
-python3 bench/report.py                  # regenerate the CodeGraph benchmark report
+python3 test_contract.py         # the one test: asserts the agent contract keeps its required clauses
+python3 -m pytest -q             # same test via pytest
+ruff check                       # lint
+claude plugin validate .         # validate the plugin/marketplace manifests
+claude --plugin-dir . -p "..."   # load the plugin locally without installing
 ```
 
-Always run `setup`/`uninstall` with `--dry-run` first when testing against a real home. Tests and internal callers pass a `--home` path (hidden flag) to install into a temp dir instead of `~`.
+## Architecture — the three shipped surfaces
 
-## Architecture
+Claude Code loads only `agents/`, `hooks/`, and the manifests in `.claude-plugin/`.
+Everything else in the repo (`bench/`, `docs/`) is a private dev workspace, present
+but never loaded.
 
-The CLI (`cli.py`) dispatches four commands to one module each; each returns a frozen dataclass of `planned`/`written`/`removed` paths that `cli.py` prints. The install target is modeled once in `paths.py` (`ClaudePaths.for_home`) — everything else takes a `home: Path` and derives paths from it.
+1. **The subagent** — `agents/haiku-scribe.md`. A static markdown file: frontmatter
+   (`model: haiku`, `tools: Read, Glob, Grep`, and the load-bearing `description`)
+   plus the body contract. Two fields are load-bearing:
+   - **`description` = the routing carrier.** Claude picks a subagent by reading its
+     `description`, so the when-to-delegate trigger (4+ files, logs, transcripts,
+     surveys, unfamiliar flow; skip for ≤3 known files) lives there. It must stay
+     YAML-quoted — the value contains `": "` which is a mapping indicator unquoted.
+   - **The body's Response Shape / coverage statement = the don't-re-read carrier.**
+     The scout states coverage explicitly so the main model trusts the extract and
+     does not re-read the raw source (the double-read is strictly worse — it spends
+     Haiku *and* Opus). See `docs/superpowers/specs/2026-07-06-v1-2-size-gated-nudge.md`
+     for the break-even lesson behind this wording.
+   - **Read-restraint** (`never open .env`/credential/secret files) replaces the
+     deny rules a plugin cannot ship; read-only tools + no network is the only other
+     boundary.
 
-Two ideas govern everything:
+2. **The onboarding nudge** — `hooks/hooks.json`. A single `UserPromptSubmit` hook
+   with an inline shell command, gated by a marker file
+   (`~/.claude/.haiku-scribe-onboarded`) so it fires exactly once ever. Emits the
+   note, then writes the marker (`printf` before `touch` = fire at-least-once rather
+   than silently-never). No breadth detection, no PreToolUse, no logging — human
+   discovery only.
 
-1. **Idempotent, backup-before-mutate writes.** Every file write goes through `_write_text_if_changed` (skip if identical) and calls `backup_existing` into `~/.claude/backups/haiku-scribe/` before overwriting user content. `setup.py` and `v1_2_hooks.py` each have their own copy of `_write_text_if_changed`.
-
-2. **Ownership tracking so uninstall only removes what we added.** The installer never blindly overwrites shared files. It records what it owns under a `haiku_scribe` key in `settings.json` (`owned_deny_rules`, `owned_v1_2_nudge_hook_command`), then uninstall removes only those tracked entries and leaves surrounding user content intact. The managed `CLAUDE.md` block is bounded by `HAIKU_SCRIBE_START`/`_END` markers (see `markdown_blocks.py`) for the same reason.
-
-### The four surfaces it manages
-
-- **Agent file** `~/.claude/agents/haiku-scribe.md` — generated verbatim by `render_agent_markdown()` in `contracts.py`. The read-only contract (`tools: Read, Glob, Grep`, `model: haiku`, forbid edit/write/shell/web/MCP) lives here as a string literal.
-- **Guidance block** in `~/.claude/CLAUDE.md` — `render_guidance_block()` in `contracts.py`, inserted/replaced via marker comments.
-- **Deny rules** in `~/.claude/settings.json` — `DEFAULT_DENY_RULES` (secrets/creds globs), merged by `settings.py::merge_deny_rules`.
-- **V1.2 nudge hooks** *(opt-in; `setup --hooks on`, off by default, and plain `setup` removes any Haiku-Scribe-owned hook)* — `v1_2_hooks.py` writes a standalone hook script (`render_nudge_hook_script()`, emitted as a string literal) and registers `UserPromptSubmit` plus `PreToolUse` (matcher `Read|Grep`) hooks in `settings.json`. Prompt nudges use conservative broad-context markers; `PreToolUse` adds one follow-up per flagged prompt. The hook also has a size-gated fallback for direct `Read` of files above `HAIKU_SCRIBE_SIZE_THRESHOLD` (default 256_000 bytes), logs decisions to `~/.claude/haiku-scribe-nudges.jsonl`, supports `HAIKU_SCRIBE_HOOKS=off`, and self-suppresses inside subagent transcripts.
-
-`doctor.py` re-derives all of the above and reports missing/invalid entries — it is the spec of what a healthy install looks like; keep it in sync when changing any generated content.
-
-### Generated content is source-of-truth as string literals
-
-The agent markdown, guidance block, and hook script are Python strings in `contracts.py` / `v1_2_hooks.py`. Editing installed behavior means editing those literals (and the matching `doctor.py` checks + tests), not the files under `~/.claude`.
+3. **README** — install steps, the `@haiku-scribe` manual-invocation fallback, the
+   optional CLAUDE.md routing snippet (a *booster*, not a carrier — the two carriers
+   above already ship the load-bearing copy), the KPI, and the no-API-key moat.
 
 ## Notes
 
-- `contracts.py`'s guidance block and agent contract keep Haiku Scribe as a broad-context scout while encoding the v1.2 break-even lesson: avoid delegating and then re-reading the same raw source. See `docs/superpowers/specs/2026-07-06-v1-2-size-gated-nudge.md` before changing that wording.
-- `bench/` is a semi-manual CodeGraph evaluation workspace; the base agent is deliberately kept MCP/CodeGraph-free until benchmark data justifies otherwise.
-- `docs/superpowers/` holds the design specs and plans behind each version (V0–V5 roadmap in README). Read the relevant spec before changing behavior.
+- `test_contract.py` is the spec of a healthy contract: it asserts the required
+  clauses (read-only tools, routing trigger, coverage statement, read-restraint) are
+  present in `agents/haiku-scribe.md`. Keep it in sync when changing the contract.
+- `pyproject.toml` exists only for the one test + lint; `testpaths` is scoped to
+  `test_contract.py` on purpose (root-wide collection breaks on the `bench/` sample
+  fixture package).
+- `bench/` is a private, semi-manual CodeGraph/headroom evaluation workspace. Its
+  harness (`run_headless.py`) referenced the old Python package and is not runnable
+  as-is after the plugin pivot — treat it as historical unless revived.
+- `docs/superpowers/` holds the design specs and plans behind each version. Read the
+  relevant spec before changing behavior; the plugin pivot is
+  `docs/superpowers/specs/2026-07-09-plugin-pivot-design.md`.

@@ -1,20 +1,14 @@
-[build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "haiku-scribe"
 version = "0.1.0"
-description = "Personal installer for the Haiku Scribe Claude Code subagent"
+description = "Claude Code plugin: read-only Haiku context-compression subagent"
 requires-python = ">=3.11"
 dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6"]
 
-[project.scripts]
-haiku-scribe = "haiku_scribe.cli:main"
-
 [tool.pytest.ini_options]
-pythonpath = ["src"]
-testpaths = ["tests"]
+# Scoped to the one root test on purpose: root-wide collection ("." ) breaks on
+# bench/fixtures/sample-cli/tests/, an uninstalled sample package used by bench.
+testpaths = ["test_contract.py"]

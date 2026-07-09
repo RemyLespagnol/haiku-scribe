@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$HOME/.claude/.haiku-scribe-onboarded\"; [ -f \"$f\" ] || { mkdir -p \"$HOME/.claude\"; printf '%s' 'haiku-scribe is installed: a read-only Haiku scout that compresses broad reads (4+ files, logs, transcripts, surveys, unfamiliar flow) into structured evidence. It auto-routes for those; invoke @haiku-scribe to force it. This note fires once.'; touch \"$f\"; }"
+          }
+        ]
+      }
+    ]
+  }
+}

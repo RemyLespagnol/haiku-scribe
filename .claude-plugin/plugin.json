@@ -1,0 +1,12 @@
+{
+  "name": "haiku-scribe",
+  "version": "0.1.0",
+  "description": "Read-only Haiku scout subagent that compresses broad context (surveys, logs, transcripts, unfamiliar flow) into structured evidence, saving main-context headroom and stretching the Pro/Max cap.",
+  "author": {
+    "name": "Remy Lespagnol"
+  },
+  "homepage": "https://github.com/RemyLespagnol/haiku-scribe",
+  "repository": "https://github.com/RemyLespagnol/haiku-scribe",
+  "license": "MIT",
+  "keywords": ["subagent", "context", "haiku", "token-efficiency"]
+}
