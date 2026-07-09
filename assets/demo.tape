@@ -1,23 +1,14 @@
 # Regenerate with: vhs assets/demo.tape  (needs charmbracelet/vhs installed)
+# The visible content is printed by demo.sh, not executed as shell commands.
 Output assets/demo.gif
 Set FontSize 20
 Set Width 1100
-Set Height 360
+Set Height 340
 Set Theme "Catppuccin Mocha"
-Set TypingSpeed 40ms
-Set PlaybackSpeed 1.0
+Set Padding 24
 
-Type "> map how auth flows across the files that touch login"
+Hide
+Type "bash assets/demo.sh"
 Enter
-Sleep 700ms
-Type "· Delegating the survey to haiku-scribe (read-only Haiku scout)…"
-Enter
-Sleep 900ms
-Type "✓ Brief returned — 8 files read, coverage complete"
-Enter
-Sleep 500ms
-Type "  Summary: login → routes/auth.py:42 → services/session.py"
-Enter
-Type "  bcrypt check :88 · JWT minted :140 · 2 callers bypass the service"
-Enter
-Sleep 2500ms
+Show
+Sleep 6.5s
