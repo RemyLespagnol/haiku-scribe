@@ -9,6 +9,4 @@ dependencies = []
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [tool.pytest.ini_options]
-# Scoped to the one root test on purpose: root-wide collection ("." ) breaks on
-# bench/fixtures/sample-cli/tests/, an uninstalled sample package used by bench.
 testpaths = ["test_contract.py"]

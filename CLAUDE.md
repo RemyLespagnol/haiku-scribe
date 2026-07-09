@@ -27,7 +27,7 @@ claude --plugin-dir . -p "..."   # load the plugin locally without installing
 ## Architecture — the three shipped surfaces
 
 Claude Code loads only `agents/`, `hooks/`, and the manifests in `.claude-plugin/`.
-Everything else in the repo (`bench/`, `docs/`) is a private dev workspace, present
+Everything else in the repo (`docs/`) is a private dev workspace, present
 but never loaded.
 
 1. **The subagent** — `agents/haiku-scribe.md`. A static markdown file: frontmatter
@@ -63,11 +63,7 @@ but never loaded.
   clauses (read-only tools, routing trigger, coverage statement, read-restraint) are
   present in `agents/haiku-scribe.md`. Keep it in sync when changing the contract.
 - `pyproject.toml` exists only for the one test + lint; `testpaths` is scoped to
-  `test_contract.py` on purpose (root-wide collection breaks on the `bench/` sample
-  fixture package).
-- `bench/` is a private, semi-manual CodeGraph/headroom evaluation workspace. Its
-  harness (`run_headless.py`) referenced the old Python package and is not runnable
-  as-is after the plugin pivot — treat it as historical unless revived.
+  `test_contract.py` on purpose.
 - `docs/superpowers/` holds the design specs and plans behind each version. Read the
   relevant spec before changing behavior; the plugin pivot is
   `docs/superpowers/specs/2026-07-09-plugin-pivot-design.md`.

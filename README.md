@@ -14,7 +14,6 @@ loading the raw source itself.
 
 - **Main-context headroom** — the primary win, on every tier. The scout reads the
   bulky raw source; your main context keeps only the compressed extract.
-  (Measured on the private bench, see `bench/`.)
 - **Pro/Max cap-stretch** — Haiku is weighted far below Opus, so offloading broad
   reads to the scout conserves the weekly cap.
 - **Subscription-seat, no API key** — it runs as a native Task-tool subagent,
@@ -84,6 +83,6 @@ secret could surface in an extract you explicitly asked for.
 
 ## Development
 
-`bench/` and `docs/superpowers/` are private development workspaces — not part of
-the shipped plugin (Claude Code loads only `agents/` and `hooks/`). Run the
-contract test with `python3 test_contract.py`.
+`docs/superpowers/` is a private development workspace — not part of the shipped
+plugin (Claude Code loads only `agents/` and `hooks/`). Run the contract test with
+`python3 test_contract.py`.
