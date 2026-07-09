@@ -4,6 +4,9 @@
 
 # haiku-scribe
 
+[![CI](https://github.com/RemyLespagnol/haiku-scribe/actions/workflows/ci.yml/badge.svg)](https://github.com/RemyLespagnol/haiku-scribe/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
 A Claude Code **plugin** that installs one thing: `haiku-scribe`, a read-only,
 Haiku-powered subagent that compresses broad context — repository surveys, logs,
 transcripts, generated output, flow mapping across unfamiliar code — into a
