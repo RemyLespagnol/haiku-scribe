@@ -30,6 +30,42 @@ D not relevant / extraction complete"); when coverage is complete, use the extra
 as-is. Delegating and then re-reading spends Haiku *and* Opus — strictly worse
 than reading directly.
 
+## How it feels
+
+Say you ask the main model to *map how auth flows across the ~8 files that touch
+login*. Two ways that goes:
+
+**Without haiku-scribe** — the main model opens all 8 files itself. Every line of
+raw source now sits in the main context for the rest of the task (illustratively,
+several thousand tokens of code you'll never look at again).
+
+**With haiku-scribe** — the main model delegates the survey. The Haiku scout
+reads the 8 files and hands back a compact brief; the main context holds only
+this, not the raw files:
+
+````markdown
+### Summary
+- Login enters at routes/auth.py:42, delegates to services/session.py.
+- Password check is services/session.py:88 (bcrypt); tokens minted at :140.
+- Two callers bypass the service and hit the model directly — see below.
+
+### Evidence
+routes/auth.py:42: `login()` — validates form, calls `Session.start()`.
+services/session.py:88: bcrypt compare against `User.pw_hash`.
+services/session.py:140: JWT minted, 24h expiry.
+
+### Unknowns And Risks
+- Refresh-token path not covered in these files; likely in middleware/.
+
+### Suggested Direct Reads
+services/session.py:140: inspect exact claim set before changing token shape.
+````
+
+The numbers above are illustrative, not a benchmark — the point is the *shape*:
+the main context keeps ~40 lines of structured evidence instead of 8 files of
+source. **One caveat still holds:** when the scout says coverage is complete,
+use the brief as-is; re-reading the same files spends Haiku *and* the main model.
+
 ## Install
 
 ```
