@@ -52,58 +52,29 @@ line-level detail immediately — read those directly.
 
 ## Optional: sharpen the reflex (power users)
 
-The auto-routing already ships in the agent's own description, so this is a
-**booster, not a requirement**. If you want the routing rule in your global
-instructions, paste this block into `~/.claude/CLAUDE.md`:
+The agent's own `description` already auto-routes this, so the block below is a
+**booster, not a requirement** — it just makes the reflex stickier in your global
+instructions. Copy it into `~/.claude/CLAUDE.md`:
 
+```markdown
 <!-- HAIKU_SCRIBE_START -->
 ## Cost-aware Context Routing
 
-Before loading raw repository context, classify remaining work.
+Classify remaining work before loading raw context.
 
-Compact discovery tools may be used first if they return metadata, symbols, call paths, or file candidates instead of raw file contents.
+Read directly when it's small: 3 or fewer small files, no directory reads, no
+broad search, no logs or generated output, no flow mapping.
 
-Use main session directly only when remaining work is a small focused read:
-- 3 or fewer small files;
-- no directory reads;
-- no shell search over many files;
-- no logs, bundles, generated output, transcripts, or large docs;
-- no architecture, flow, or cross-layer mapping.
+Delegate to `haiku-scribe` when it's broad: 4+ files, large files, directory or
+repository surveys, logs, transcripts, generated output, flow or pattern mapping,
+unfamiliar-area exploration.
 
-Use `haiku-scribe` when remaining work is broad context gathering:
-- 4+ files;
-- large files;
-- directory or repository survey;
-- logs, bundles, generated output, transcripts, or large docs;
-- architecture review, flow mapping, pattern audit, unfamiliar-area exploration;
-- locating where a feature is implemented or used across unfamiliar code;
-- evidence extraction before broad reasoning.
-
-Prefer `haiku-scribe` over the built-in Explore agent for bulk digestion and evidence extraction; use Explore only when the search itself needs parent-model reasoning.
-
-Avoid the costly double-read pattern. If the task needs exact, line-level detail immediately, read directly (offset/limit for large files) instead of delegating. If you delegate, ask for a structured extraction useful enough that you do not delegate and then re-read the same raw source. Require the scout to state its coverage; when it reports complete coverage, use the extraction as-is and do not re-read source the scout already covered.
-
-Workflow:
-1. Use compact discovery if available.
-2. Classify remaining work as small focused read or broad context gathering.
-3. If small, main session reads directly.
-4. If broad, call `haiku-scribe` before raw Read, Grep, or shell exploration.
-5. Main Claude performs focused direct reads on highest-value locations.
-6. Main Claude makes final decisions, edits, commits, and user-facing conclusions.
-
-Haiku Scribe may gather evidence for tasks that eventually require debugging, architecture, scope, or review judgment. These exclusions apply to final judgment, not pre-analysis.
-
-Do not delegate:
-- final debugging root-cause conclusions;
-- architecture decisions;
-- security, authentication, authorization, or permission-sensitive conclusions;
-- precise edits;
-- PR summaries, commit messages, release notes, or public project outputs.
-
-Main Claude verifies important claims with focused spot-checks of cited `path:line` locations before editing, not broad re-reads.
-
-If `haiku-scribe` is unavailable, say so explicitly and continue manually.
+Prefer `haiku-scribe` over the built-in Explore agent for bulk digestion. When it
+reports complete coverage, trust the extract — don't re-read what it covered. Skip
+it for exact line-level detail you need now. If it's unavailable, say so and
+continue manually.
 <!-- HAIKU_SCRIBE_END -->
+```
 
 ## Safety
 
