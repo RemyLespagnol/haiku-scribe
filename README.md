@@ -77,7 +77,7 @@ use the brief as-is; re-reading the same files spends Haiku *and* the main model
 /plugin install haiku-scribe
 ```
 
-Update: re-run `/plugin install haiku-scribe`. Remove: `/plugin uninstall haiku-scribe`.
+Update: `/plugin update haiku-scribe`. Remove: `/plugin uninstall haiku-scribe`.
 
 ## Use
 
