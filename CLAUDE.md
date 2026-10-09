@@ -31,8 +31,8 @@ Everything else in the repo (`docs/`) is a private dev workspace, present
 but never loaded.
 
 1. **The subagent** — `agents/haiku-scribe.md`. A static markdown file: frontmatter
-   (`model: haiku`, `tools: Read, Glob, Grep`, and the load-bearing `description`)
-   plus the body contract. Two fields are load-bearing:
+   (`model: haiku`, `effort: medium`, `tools: Read, Glob, Grep`, and the load-bearing
+   `description`) plus the body contract. Two fields are load-bearing:
    - **`description` = the routing carrier.** Claude picks a subagent by reading its
      `description`, so the when-to-delegate trigger (4+ files, logs, transcripts,
      surveys, unfamiliar flow; skip for ≤3 known files) lives there. It must stay
@@ -45,6 +45,11 @@ but never loaded.
    - **Read-restraint** (`never open .env`/credential/secret files) replaces the
      deny rules a plugin cannot ship; read-only tools + no network is the only other
      boundary.
+   - **`effort: medium` = the cost pin.** Without it the scout inherits the main
+     session's effort; at `xhigh` Haiku 5.5 thinks 3–9x more for the same brief.
+     `low` is cheaper but cut a named scope short (4 of 13 files). Haiku 4.5
+     (Bedrock/Vertex) accepts the field without error. Evidence:
+     `docs/superpowers/evaluations/2026-10-09-haiku-5-5-effort-pin.md`.
 
 2. **The onboarding nudge** — `hooks/hooks.json`. A single `UserPromptSubmit` hook
    with an inline shell command, gated by a marker file

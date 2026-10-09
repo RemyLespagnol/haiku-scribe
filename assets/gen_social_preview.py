@@ -2,6 +2,7 @@
 Regenerate with: python3 assets/gen_social_preview.py
 """
 from pathlib import Path
+
 from PIL import Image, ImageDraw, ImageFont
 
 HERE = Path(__file__).parent

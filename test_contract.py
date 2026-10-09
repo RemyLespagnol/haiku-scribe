@@ -7,6 +7,7 @@ AGENT = Path(__file__).parent / "agents" / "haiku-scribe.md"
 
 REQUIRED = [
     "model: haiku",
+    "effort: medium",
     "tools: Read, Glob, Grep",
     # routing carrier (description trigger)
     "Use proactively before broad exploration",
