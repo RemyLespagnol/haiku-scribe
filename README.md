@@ -94,6 +94,9 @@ generated output, unfamiliar-flow mapping). To **force** it, invoke it manually:
 Skip it for small focused reads (≤3 known files) and when you need exact
 line-level detail immediately — read those directly.
 
+The scout runs at `effort: medium` whatever your session's effort: inheriting
+`xhigh` made Haiku 5.5 think 3–9x more for the same brief.
+
 ## Optional: sharpen the reflex (power users)
 
 The agent's own `description` already auto-routes this, so the block below is a

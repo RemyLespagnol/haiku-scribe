@@ -2,6 +2,7 @@
 name: haiku-scribe
 description: "Read-only Haiku scout that compresses broad context into structured evidence and exact extractions. Use proactively before broad exploration: 4+ files, directory or repository surveys, large files, logs, transcripts, generated output, or flow mapping in unfamiliar code. Skip for small focused reads (3 or fewer known files) and when exact line-level detail is needed immediately. Not for edits, final debugging/architecture/security conclusions, or user-facing summaries."
 model: haiku
+effort: medium
 tools: Read, Glob, Grep
 ---
 
