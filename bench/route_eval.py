@@ -54,22 +54,22 @@ def bug(wd):
 # name: (setup, prompt, expect_scout, answer must contain)
 CASES = {
     # two files carry the answer: the model may decline the scout after the gate and read directly
-    "json-flow": (stdlib("json"), "Explain how json.dumps turns a Python object into a string, using the json/ "
+    "json-flow": (stdlib("json"), ("Explain how json.dumps turns a Python object into a string, using the json/ "
                   "package here: modules and functions involved, and when the C accelerator is used instead of "
-                  "pure Python.", None, ["iterencode", "c_make_encoder"]),
-    "specs-history": (specs, "Read the design specs in specs/ and explain how the project's position on "
-                      "PreToolUse hooks changed over time. Cite the spec for each change.", True, ["PreToolUse"]),
-    "email-survey": (stdlib("email"), "I'm new to this package. Give me an architecture overview: the main "
+                  "pure Python."), None, ["iterencode", "c_make_encoder"]),
+    "specs-history": (specs, ("Read the design specs in specs/ and explain how the project's position on "
+                      "PreToolUse hooks changed over time. Cite the spec for each change."), True, ["PreToolUse"]),
+    "email-survey": (stdlib("email"), ("I'm new to this package. Give me an architecture overview: the main "
                      "modules, how parsing flows from raw bytes to a Message object, and where policy objects "
-                     "plug in.", True, ["feedparser", "policy"]),
+                     "plug in."), True, ["feedparser", "policy"]),
     # one large file: a class/def grep answers it about as cheaply as a scout, so either route passes
-    "argparse-tour": (stdlib("argparse.py"), "What's in argparse.py? List the main classes and what each one "
-                      "is for.", None, ["ArgumentParser", "Action"]),
+    "argparse-tour": (stdlib("argparse.py"), ("What's in argparse.py? List the main classes and what each one "
+                      "is for."), None, ["ArgumentParser", "Action"]),
     # broad-sounding wording on a one-file task: the hook fires, the model should still read directly
     "explain-small": (bug, "Explain what total() in calc.py does.", False, ["total"]),
     # broad, with none of the usual "overview/explain/how does" wording
-    "email-headers": (stdlib("email"), "Which files in email/ deal with header parsing or folding, and what does "
-                      "each one depend on?", True, ["headerregistry", "_header_value_parser"]),
+    "email-headers": (stdlib("email"), ("Which files in email/ deal with header parsing or folding, and what does "
+                      "each one depend on?"), True, ["headerregistry", "_header_value_parser"]),
     "bug-line": (bug, "calc.py has an off-by-one bug in total(); fix it.", False, []),
     "one-file-q": (stdlib("json"), "In json/decoder.py, what attributes does JSONDecodeError set?", False,
                    ["lineno", "colno"]),
@@ -115,7 +115,7 @@ def run(job):
             ["claude", "-p", "--model", model, "--effort", effort, "--setting-sources", sources,
              "--settings", ONLY_UNDER_TEST, "--plugin-dir", str(plugin), "--dangerously-skip-permissions",
              "--output-format", "stream-json", "--verbose", "--include-hook-events", prompt],
-            cwd=wd, env=ENV, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=600)
+            cwd=wd, env=ENV, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=600, check=False)
     except subprocess.TimeoutExpired:
         return {"case": name, "tag": tag, "i": i, "error": "timeout"}
     finally:

@@ -26,7 +26,7 @@ def bash(cmd, sid="s-1", **kw):
 
 
 def broad(cmd):
-    return subprocess.run([str(HOOKS / "broad-bash"), json.dumps(cmd)[1:-1]]).returncode == 0
+    return subprocess.run([str(HOOKS / "broad-bash"), json.dumps(cmd)[1:-1]], check=False).returncode == 0
 
 
 def test_broad_bash_classifier():
@@ -79,7 +79,7 @@ def test_parallel_calls_deny_once():
     turn("s-5")
     payload = json.dumps({"session_id": "s-5", "tool_name": "Bash", "tool_input": {"command": "find . -type f"}})
     outs = subprocess.run(f"for i in 1 2 3 4 5 6; do printf '%s' '{payload}' | {HOOKS / 'route'} tool & done; wait",
-                          shell=True, capture_output=True, text=True, env={**os.environ, "TMPDIR": TMP}).stdout
+                          shell=True, capture_output=True, text=True, env={**os.environ, "TMPDIR": TMP}, check=False).stdout
     assert outs.count('"deny"') == 1
 
 
