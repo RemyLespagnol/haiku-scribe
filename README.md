@@ -83,9 +83,22 @@ Update: `/plugin update haiku-scribe`. Remove: `/plugin uninstall haiku-scribe`.
 
 ## Use
 
-The scout **auto-routes**: the main model delegates to it when a request means
-broad reading (4+ files, directory/repo surveys, large files, logs, transcripts,
-generated output, unfamiliar-flow mapping). To **force** it, invoke it manually:
+The scout **auto-routes**. A subagent description alone almost never wins: left
+to itself, the main model starts with its own `ls`/`grep` and never delegates. So
+the plugin ships a small routing hook that watches what the main model is about to
+do, not what you typed. When it starts a broad read (a recursive `find`/`grep -r`,
+a command over many files or a glob, a 4th file in the same turn), the hook
+declines that call once and points it at the scout. If the model really needs
+those files verbatim (to edit them, or one or two are enough), it retries and the
+retry goes through, so a misjudged call costs one turn. Any edit, or a scout call,
+turns the hook off until your next prompt.
+
+Measured in a clean environment (no user `CLAUDE.md`): Sonnet 5.5 delegated 19 of
+20 broad questions and Opus 5.5 11 of 11, against 0 of 7 without the hook. Neither
+delegated on any one-file task (0 of 14). On broad material the main context
+shrank 50–80% and cost went down; when two grepped slices already answer the
+question, delegating costs about the same. Turn routing off with `HAIKU_SCRIBE_ROUTE=off`. To **force** the
+scout, invoke it manually:
 
 ```
 @haiku-scribe survey the auth flow across src/ and list every entrypoint
@@ -99,9 +112,8 @@ The scout runs at `effort: medium` whatever your session's effort: inheriting
 
 ## Optional: sharpen the reflex (power users)
 
-The agent's own `description` already auto-routes this, so the block below is a
-**booster, not a requirement** — it just makes the reflex stickier in your global
-instructions. Copy it into `~/.claude/CLAUDE.md`:
+The routing hook already does the routing, so the block below is a **booster, not
+a requirement**. It nudges delegation before the first read rather than at it. Copy it into `~/.claude/CLAUDE.md`:
 
 ```markdown
 <!-- HAIKU_SCRIBE_START -->
@@ -132,6 +144,6 @@ secret could surface in an extract you explicitly asked for.
 ## Development
 
 `docs/superpowers/` is a private development workspace — not part of the shipped
-plugin (Claude Code loads only `agents/` and `hooks/`). Run the contract test with
-`python3 test_contract.py`.
+plugin (Claude Code loads only `agents/` and `hooks/`). Run the tests with
+`python3 test_contract.py && python3 test_route.py`.
 - Demo GIF: edit `assets/demo.tape`, regenerate with `vhs assets/demo.tape` ([charmbracelet/vhs](https://github.com/charmbracelet/vhs)).

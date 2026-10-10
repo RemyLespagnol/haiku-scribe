@@ -18,6 +18,8 @@ jobs:
         run: pip install ruff
       - name: Contract test
         run: python3 test_contract.py
+      - name: Route hook test
+        run: python3 test_route.py
       - name: Lint
         run: ruff check
       - name: Validate manifests (JSON well-formed)

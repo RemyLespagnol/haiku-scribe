@@ -15,6 +15,9 @@ REQUIRED = [
     # don't-re-read carrier (coverage statement)
     "State coverage explicitly",
     "Never present a sample or partial scan as a total count",
+    # brief budget + latency (a verbose brief can exceed the raw source it replaces)
+    "Keep the brief small",
+    "Batch independent tool calls",
     # read-restraint clause (deny-rule replacement)
     "never open `.env`",
 ]

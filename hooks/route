@@ -1,0 +1,35 @@
+#!/bin/sh
+# Routes broad reading to the haiku-scribe scout, judged by what the main model is
+# about to do, not by prompt wording. $1 = prompt (new turn: reset) | tool. The first
+# broad read of a turn (recursive search, many files, a 4th distinct file) is denied
+# once with a pointer to the scout; a retry goes through, and an edit disarms the turn.
+# Fails open.
+# Off switch: HAIKU_SCRIBE_ROUTE=off.
+[ "${HAIKU_SCRIBE_ROUTE:-}" = off ] && exit 0
+in=$(cat)
+printf '%s' "$in" | grep -q '"agent_id" *: *"' && exit 0
+sid=$(printf '%s' "$in" | sed -n 's/.*"session_id" *: *"\([A-Za-z0-9-]*\)".*/\1/p')
+[ -n "$sid" ] || exit 0
+state="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/haiku-scribe-route-$sid"
+
+if [ "$1" = prompt ]; then
+  case $in in *'<task-notification>'*) ;; *) rm -f "$state" "$state.off" ;; esac
+  exit 0
+fi
+
+[ -e "$state.off" ] && exit 0
+field() { printf '%s' "$in" | sed -nE "s/.*\"$1\" *: *\"(([^\"\\\\]|\\\\.)*)\".*/\\1/p"; }
+case $(field tool_name) in
+  Agent|Task) [ "$(field subagent_type | cut -c1-12)" = haiku-scribe ] && : > "$state.off"; exit 0 ;;
+  Edit|Write|MultiEdit|NotebookEdit) : > "$state.off"; exit 0 ;;
+  Bash) "$(dirname "$0")/broad-bash" "$(field command)" || exit 0 ;;
+  Glob) case $(field pattern) in *'**'*) ;; *) exit 0 ;; esac ;;
+  Grep) p=$(field path); [ -n "$p" ] && [ ! -d "$p" ] && exit 0 ;;
+  Read)
+    echo "read:$(field file_path)" >> "$state"
+    [ "$(grep '^read:' "$state" | sort -u | wc -l)" -ge 4 ] || exit 0 ;;
+  *) exit 0 ;;
+esac
+# one denial per turn even under parallel calls; an unwritable state dir never denies
+( set -C; : > "$state.off" ) 2>/dev/null || exit 0
+printf '%s' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"haiku-scribe routing: this call reads broadly (a recursive search, many files, or a 4th file this turn). Delegate the reading to the scout (Agent tool, subagent_type `haiku-scribe:haiku-scribe`): pass the question and the paths, ask for the answer rather than a dump, and answer from its brief; it states its coverage, so do not re-read what it covered. If you need specific files verbatim (to edit them, or one or two suffice), retry this call: it will go through."}}'

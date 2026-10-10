@@ -1,0 +1,65 @@
+#!/bin/sh
+# Exit 0 when the JSON-escaped shell command in $1 reads broadly: a recursive search
+# or listing, a wildcard find, or one command or loop over 3+ files or a glob.
+# Huge commands (heredocs) are never broad reads, and awk is quadratic on them.
+[ ${#1} -gt 20000 ] && exit 1
+printf '%s\n' "$1" | awk '
+{
+  gsub(/\\n/, ";"); gsub(/\\"/, "\""); gsub(/\\\\/, "\\")
+  n = split(unquote_ops($0), seg, /&&|\|\||;|\|/)
+  for (i = 1; i <= n; i++) if (broad(seg[i])) exit 0
+  exit 1
+}
+function unquote_ops(s,   out, c, d, q, i) {
+  for (i = 1; i <= length(s); i++) {
+    c = substr(s, i, 1)
+    if (c == "\\" && q != "\047") {
+      d = substr(s, ++i, 1); if (d ~ /[|;&]/) d = " "
+      out = out c d; continue
+    }
+    if (q == "" && (c == "\"" || c == "\047")) q = c
+    else if (c == q) q = ""
+    else if (q != "" && c ~ /[|;&]/) c = " "
+    out = out c
+  }
+  return out
+}
+function args(s, w,   k, j, m) {
+  k = split(s, w, /[ \t]+/); m = 0
+  for (j = 2; j <= k; j++) if (w[j] != "" && w[j] !~ /^-/) w[++m] = w[j]
+  return m
+}
+function broad(s,   w, k, a, j, last, m, n) {
+  sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); sub(/^rtk[ \t]+/, "", s)
+  k = split(s, w, /[ \t]+/)
+  if (w[1] == "find") {
+    for (j = 2; j < k; j++) if (w[j] ~ /^-i?(name|path)$/) {
+      a = w[j + 1]; gsub(/["\047]/, "", a); last = a; sub(/.*\//, "", last)
+      return last ~ /[*?]/
+    }
+    return 1
+  }
+  if (w[1] == "tree") return 1
+  if (w[1] == "ls") { for (j = 2; j <= k; j++) if (w[j] ~ /^-[a-zA-Z]*R/) return 1; return 0 }
+  gsub(/"[^"]*"|\047[^\047]*\047/, "Q", s)
+  gsub(/[0-9]*>&[0-9-]+/, "", s); gsub(/[0-9]*(>>|>|<<|<)[ \t]*[^ \t]*/, "", s)
+  k = split(s, w, /[ \t]+/)
+  if (w[1] == "rg" || w[1] == "ag") { m = args(s, w); return m < 2 || w[m] !~ /\.[A-Za-z0-9]+$/ || w[m] ~ /\*/ }
+  if (w[1] ~ /^e?grep$/) {
+    for (j = 2; j <= k; j++) if (w[j] ~ /^-[a-zA-Z]*[rR]|^--recursive/) return 1
+    return s ~ /\*/
+  }
+  if (w[1] == "for") {
+    if (s ~ /\*/) return 1
+    for (j = 2; j <= k && w[j] != "in"; j++) ;
+    for (j++; j <= k && w[j] != "do"; j++) if (w[j] ~ /[.\/]/) n++
+    return n >= 3
+  }
+  if (w[1] ~ /^(cat|head|tail|wc|sed|nl|bat|less|more)$/) {
+    if (s ~ /\*/) return 1
+    m = args(s, w); n = 0
+    for (j = 1; j <= m; j++) if (w[j] != "Q" && w[j] !~ /^[0-9,$p]+$/) n++
+    return n >= 3
+  }
+  return 0
+}'
