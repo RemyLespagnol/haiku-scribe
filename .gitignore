@@ -7,6 +7,7 @@ __pycache__/
 uv.lock
 docs/haiku_scribe_prd.md
 docs/haiku_scribe_skill_prd.md
-# regenerable bench fixtures
-bench/fixtures/*.log
-bench/runs/*.log
+# paid eval transcripts and leftovers; only bench/*.py is tracked
+bench/runs/
+bench/fixtures/
+bench/.omc/

@@ -9,4 +9,4 @@ dependencies = []
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [tool.pytest.ini_options]
-testpaths = ["test_contract.py"]
+testpaths = ["test_contract.py", "test_route.py"]

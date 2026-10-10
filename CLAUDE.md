@@ -17,14 +17,16 @@ this one repo.
 ## Commands
 
 ```bash
-python3 test_contract.py         # the one test: asserts the agent contract keeps its required clauses
-python3 -m pytest -q             # same test via pytest
+python3 test_contract.py         # asserts the agent contract keeps its required clauses
+python3 test_route.py            # routing hook: broad-call classifier, deny-once, disarm rules
+python3 -m pytest -q             # both tests via pytest
+python3 bench/route_eval.py -n 2 # paid routing eval (claude -p, clean env); summary: bench/summary.py
 ruff check                       # lint
 claude plugin validate .         # validate the plugin/marketplace manifests
 claude --plugin-dir . -p "..."   # load the plugin locally without installing
 ```
 
-## Architecture — the three shipped surfaces
+## Architecture — the shipped surfaces
 
 Claude Code loads only `agents/`, `hooks/`, and the manifests in `.claude-plugin/`.
 Everything else in the repo (`docs/`) is a private dev workspace, present
@@ -51,12 +53,28 @@ but never loaded.
      (Bedrock/Vertex) accepts the field without error. Evidence:
      `docs/superpowers/evaluations/2026-10-09-haiku-5-5-effort-pin.md`.
 
-2. **The onboarding nudge** — `hooks/hooks.json`. A single `UserPromptSubmit` hook
-   with an inline shell command, gated by a marker file
-   (`~/.claude/.haiku-scribe-onboarded`) so it fires exactly once ever. Emits the
-   note, then writes the marker (`printf` before `touch` = fire at-least-once rather
-   than silently-never). No breadth detection, no PreToolUse, no logging — human
-   discovery only.
+2. **The routing hook** — `hooks/route` + `hooks/broad-bash` (POSIX sh + awk, no `jq`),
+   wired in `hooks/hooks.json`. The description alone never got an unprompted
+   delegation in a clean env (0/8 Sonnet, 0/3 Opus): the model always opens with its
+   own `ls`/`find`/`grep`. The hook judges the model's *tool call*, never the prompt
+   wording (a keyword classifier was tried and missed broad prompts without the words).
+   - `PreToolUse` on the main thread: the first broad read of a turn is denied once
+     with a pointer to `haiku-scribe:haiku-scribe`. Broad = a recursive/wildcard
+     `find`/`grep -r`/`rg`/`ls -R`/`tree`, a command or loop over 3+ files or a glob,
+     a `Glob` with `**`, a `Grep` on a directory, or a 4th distinct file `Read` this turn.
+     A retry goes through, so a misjudged call costs one turn.
+   - Disarmed for the rest of the turn by a scout call or any edit; subagent calls
+     (`agent_id`) and other agent types are never touched.
+   - State: per-session files in `$XDG_RUNTIME_DIR` (else `$TMPDIR`, else `/tmp`).
+     `UserPromptSubmit` only resets them (not on `<task-notification>` turns). The
+     denial is claimed atomically (`set -C`), so parallel calls get one deny, and an
+     unwritable state dir never denies. `HAIKU_SCRIBE_ROUTE=off` disables it.
+   - Must stay portable: macOS `/bin/sh` + BSD awk and Debian dash + mawk (no `{n,}`
+     regex intervals). `test_route.py` passes on both.
+   - Evidence: `docs/superpowers/evaluations/2026-10-10-route-hook.md`.
+   The onboarding note (inline command, same `UserPromptSubmit` block) fires once per
+   marker; the marker is `~/.claude/.haiku-scribe-onboarded-route` so pre-hook users
+   see the new note.
 
 3. **README** — install steps, the `@haiku-scribe` manual-invocation fallback, the
    optional CLAUDE.md routing snippet (a *booster*, not a carrier — the two carriers
@@ -67,8 +85,10 @@ but never loaded.
 - `test_contract.py` is the spec of a healthy contract: it asserts the required
   clauses (read-only tools, routing trigger, coverage statement, read-restraint) are
   present in `agents/haiku-scribe.md`. Keep it in sync when changing the contract.
-- `pyproject.toml` exists only for the one test + lint; `testpaths` is scoped to
-  `test_contract.py` on purpose.
+- `test_route.py` pins the hook's behavior, including the broad/targeted command
+  examples. Keep it in sync when changing `hooks/route` or `hooks/broad-bash`.
+- `pyproject.toml` exists only for the tests + lint; `testpaths` is scoped to the two
+  test files on purpose (`bench/` is paid and never runs in CI).
 - `docs/superpowers/` holds the design specs and plans behind each version. Read the
   relevant spec before changing behavior; the plugin pivot is
   `docs/superpowers/specs/2026-07-09-plugin-pivot-design.md`.

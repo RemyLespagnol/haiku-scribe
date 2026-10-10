@@ -5,7 +5,24 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=\"$HOME/.claude/.haiku-scribe-onboarded\"; [ -f \"$f\" ] || { mkdir -p \"$HOME/.claude\"; printf '%s' 'haiku-scribe is installed: a read-only Haiku scout that compresses broad reads (4+ files, logs, transcripts, surveys, unfamiliar flow) into structured evidence. It auto-routes for those; invoke @haiku-scribe to force it. This note fires once.'; touch \"$f\"; }"
+            "command": "f=\"$HOME/.claude/.haiku-scribe-onboarded-route\"; [ -f \"$f\" ] || { mkdir -p \"$HOME/.claude\"; printf '%s' 'haiku-scribe is installed: a read-only Haiku scout that compresses broad reads (4+ files, logs, transcripts, surveys, unfamiliar flow) into a short brief. When the main model starts a broad read (recursive search, many files), a routing hook declines it once and points at the scout; a retry goes through. Disable routing: HAIKU_SCRIBE_ROUTE=off. This note fires once.'; touch \"$f\"; }"
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/route prompt",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Grep|Glob|Agent|Task|Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/route tool",
+            "timeout": 5
           }
         ]
       }
