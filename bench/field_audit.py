@@ -80,7 +80,7 @@ def turns(rs, a):
         c = content(r)
         if r.get("type") == "user" and isinstance(c, str) and c.startswith("<task-notification>"):
             tid = re.search(r"<tool-use-id>(.*?)</tool-use-id>", c)
-            body = re.search(r"<result>(.*)</result>", c, re.S)
+            body = re.search(r"<result>(.*)</result>", c, re.DOTALL)
             if tid and tid.group(1) in scouts:
                 seq.append(("brief", body.group(1) if body else c))
         for b in c if isinstance(c, list) else []:

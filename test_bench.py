@@ -1,13 +1,10 @@
 """bench/ helpers that cost nothing to run: the citation check and the field audit.
 Runnable as `python3 test_bench.py` or via pytest."""
 import json
-import sys
 import tempfile
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent / "bench"))
-import route_eval  # noqa: E402
-import field_audit  # noqa: E402
+from bench import field_audit, route_eval
 
 
 def test_cites_flags_missing_files_and_lines_past_eof():
@@ -97,7 +94,7 @@ def test_field_audit_outcomes_reads_and_tokens():
         use("t5", "Bash", "m5", command="grep -rnw total .", description="Retry: find total"),
     ])
     with open(main, "ab") as f:
-        f.write('{"type": "assistant", "x": "'.encode() + "é".encode()[:1])
+        f.write(b'{"type": "assistant", "x": "' + "é".encode()[:1])
     sub = root / "proj" / "s1" / "subagents" / "agent-a1.jsonl"
     write(sub, [say("h1", out=20, model="claude-haiku-5-5")])
     sub.with_name("agent-a1.meta.json").write_text('{"agentType": "haiku-scribe:haiku-scribe"}')
