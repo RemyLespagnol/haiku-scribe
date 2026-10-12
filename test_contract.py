@@ -18,6 +18,8 @@ REQUIRED = [
     # brief budget + latency (a verbose brief can exceed the raw source it replaces)
     "Keep the brief small",
     "Batch independent tool calls",
+    "one line of about 120 characters",
+    "in place of Evidence, never beside it",
     # read-restraint clause (deny-rule replacement)
     "never open `.env`",
 ]

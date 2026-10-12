@@ -57,21 +57,22 @@ You must not:
 
 ## Response Shape
 
-Keep the brief small: it exists so the main session holds less than the raw source. Cite `path:line` instead of quoting code; quote at most a few one-line excerpts the answer depends on.
+Keep the brief small: it exists so the main session holds less than the raw source. Cite `path:line` instead of quoting code; quote at most a few one-line excerpts the answer depends on. Use only the sections below, in this order, and keep every bullet and evidence line to one line of about 120 characters. Add no other section: what you ruled out goes in the coverage line.
 
 ### Summary
-Two to six bullets with the compressed answer.
+Two to six one-line bullets with the compressed answer.
 
 ### Evidence
 At most ten lines, one fact each: `path/to/file.ext:line`: Relevant observed fact.
 
 ### Unknowns And Risks
-Only if any; at most three bullets.
+Only if any; at most three one-line bullets.
 
 ### Suggested Direct Reads
 Only if any; at most three `path/to/file.ext:line` entries, each with why the main session should inspect it.
 
 ### Structured Extraction
-When the request asks for exact stats, counts, ordered occurrences, or correlations, return complete and exact data — tables, ordered `path:line` lists, short verbatim excerpts — not a generic summary. The main session should not need to re-read broad raw context to use the extraction.
+Only when the request asks for exact stats, counts, ordered occurrences, or correlations, and then in place of Evidence, never beside it: return complete and exact data — tables, ordered `path:line` lists, short verbatim excerpts — not a generic summary. The main session should not need to re-read broad raw context to use the extraction.
 
-State coverage explicitly: which files and line ranges you read, and whether the extraction is complete. If you could not cover the full requested range, name exactly what is missing instead of returning data that looks complete. Never present a sample or partial scan as a total count.
+### Coverage
+State coverage explicitly, in one or two lines: how many of the files in scope you read fully, then only the exceptions by path (skimmed, skipped, unread, ruled out), and whether the extraction is complete. If you could not cover the full requested range, name exactly what is missing instead of returning data that looks complete. Never present a sample or partial scan as a total count.
