@@ -153,3 +153,26 @@ Sonnet, medium, n=2, tag `rt`:
 
 Rename is back to parity with routing off (0.050 vs 0.047): the model retries the grep and
 edits. Broad prompts still delegate 4/4. Opus not re-run.
+
+### v0.3.3: briefs under the ceiling
+
+Briefs ran 4.0–4.9k (Sonnet) and 4.5–7.5k (Opus) chars against the 4,000 ceiling. The
+bulk was the Evidence lines (up to 2.9k), a Structured Extraction stacked beside the
+Evidence when the main model asked for quotes (up to 4.6k), a coverage paragraph that
+listed every file (up to 0.9k), and sections the contract never asked for ("not
+relevant", "ruled out"). The contract now keeps every bullet and evidence line to one
+line of about 120 characters, allows no other sections, makes Structured Extraction
+replace Evidence instead of sitting beside it, and puts coverage in one or two lines
+that list only the exceptions. Medium effort, n=2 (`brief` counts the hand-back
+wrapper, so it reads ~10% high):
+
+| case | model | before (`rt`, `oF`) cost / brief | v0.3.3 (`bl2`) cost / brief |
+|------|-------|----------------------------------|-----------------------------|
+| email-headers | Sonnet | 0.067 / 4.4k | 0.066 / 3.9k |
+| specs-history | Sonnet | 0.071 / 4.0k | 0.068 / 3.0k |
+| email-headers | Opus | 0.138 / — | 0.141 / 4.5k |
+| specs-history | Opus | 0.191 / — | 0.145 / 4.6k |
+
+All answers correct, scout 8/8 on broad prompts. Opus on v0.3.2 rules (tag `bl-opus`):
+rename 0/2 and one-file-q 0/2 delegated, both correct. Opus briefs are still a little
+over 4k: its scout prompts ask for verbatim quotes, which the contract allows.
