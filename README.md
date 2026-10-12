@@ -85,7 +85,11 @@ On Claude Code older than 2.1.275, add the marketplace first:
 /plugin install haiku-scribe
 ```
 
-Update: `/plugin update haiku-scribe`. Remove: `/plugin uninstall haiku-scribe`.
+Third-party marketplaces don't auto-update by default, and a marketplace can't turn
+it on for you. To get new versions automatically: `/plugin` → **Marketplaces** →
+`haiku-scribe` → **Enable auto-update** (it applies on the next launch, or now with
+`/reload-plugins`). Without it, update by hand: `/plugin update haiku-scribe`, then
+`/reload-plugins`. Remove: `/plugin uninstall haiku-scribe`.
 
 ## Use
 

@@ -122,7 +122,7 @@ def test_hooks_json_wiring():
     note, home = cfg["UserPromptSubmit"][0]["hooks"][0]["command"], tempfile.mkdtemp()
     first, second = (subprocess.run(note, shell=True, capture_output=True, text=True, env={**os.environ, "HOME": home},
                                     check=True).stdout for _ in range(2))
-    assert "HAIKU_SCRIBE_ROUTE=off" in json.loads(first)["systemMessage"]
+    assert all(s in json.loads(first)["systemMessage"] for s in ("HAIKU_SCRIBE_ROUTE=off", "Enable auto-update"))
     assert second == ""
 
 

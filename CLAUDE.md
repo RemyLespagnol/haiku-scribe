@@ -75,8 +75,9 @@ but never loaded.
      regex intervals). `test_route.py` passes on both.
    - Evidence: `docs/superpowers/evaluations/2026-10-10-route-hook.md`.
    The onboarding note (inline command, same `UserPromptSubmit` block) fires once per
-   marker; the marker is `~/.claude/.haiku-scribe-onboarded-route` so pre-hook users
-   see the new note.
+   marker. The marker is `~/.claude/.haiku-scribe-onboarded-autoupdate`: rename it when
+   the note gains something existing users must see (here, how to turn on auto-update,
+   which a third-party marketplace cannot enable for them).
 
 3. **README** — install steps, the `@haiku-scribe` manual-invocation fallback, the
    optional CLAUDE.md routing snippet (a *booster*, not a carrier — the two carriers
