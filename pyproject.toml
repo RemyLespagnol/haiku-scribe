@@ -1,6 +1,6 @@
 [project]
 name = "haiku-scribe"
-version = "0.3.4"
+version = "0.3.5"
 description = "Claude Code plugin: read-only Haiku context-compression subagent"
 requires-python = ">=3.11"
 dependencies = []
@@ -9,4 +9,4 @@ dependencies = []
 dev = ["pytest>=8", "ruff>=0.6"]
 
 [tool.pytest.ini_options]
-testpaths = ["test_contract.py", "test_route.py"]
+testpaths = ["test_contract.py", "test_route.py", "test_bench.py"]
