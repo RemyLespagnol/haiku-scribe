@@ -1,6 +1,6 @@
 {
   "name": "haiku-scribe",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Read-only Haiku scout subagent that compresses broad context (surveys, logs, transcripts, unfamiliar flow) into structured evidence, saving main-context headroom and stretching the Pro/Max cap. Ships a routing hook that declines the first broad read of a turn once and points it at the scout (HAIKU_SCRIBE_ROUTE=off disables it).",
   "author": {
     "name": "Remy Lespagnol"
