@@ -75,6 +75,12 @@ use the brief as-is; re-reading the same files spends Haiku *and* the main model
 ## Install
 
 ```
+/plugin install haiku-scribe --marketplace RemyLespagnol/haiku-scribe
+```
+
+On Claude Code older than 2.1.275, add the marketplace first:
+
+```
 /plugin marketplace add https://github.com/RemyLespagnol/haiku-scribe.git
 /plugin install haiku-scribe
 ```
@@ -93,9 +99,9 @@ those files verbatim (to edit them, or one or two are enough), it retries and th
 retry goes through, so a misjudged call costs one turn. Any edit, or a scout call,
 turns the hook off until your next prompt.
 
-Measured in a clean environment (no user `CLAUDE.md`): Sonnet 5.5 delegated 19 of
-20 broad questions and Opus 5.5 11 of 11, against 0 of 7 without the hook. Neither
-delegated on any one-file task (0 of 14). On broad material the main context
+Measured in a clean environment (no user `CLAUDE.md`): Sonnet 5.5 delegated in 19 of
+20 runs over 4 broad prompts and Opus 5.5 in 11 of 11, against 0 of 7 without the
+hook. Neither delegated on any one-file run (0 of 14). On broad material the main context
 shrank 50–80% and cost went down; when two grepped slices already answer the
 question, delegating costs about the same. Turn routing off with `HAIKU_SCRIBE_ROUTE=off`. To **force** the
 scout, invoke it manually:
@@ -144,6 +150,9 @@ secret could surface in an extract you explicitly asked for.
 ## Development
 
 `docs/superpowers/` is a private development workspace — not part of the shipped
-plugin (Claude Code loads only `agents/` and `hooks/`). Run the tests with
-`python3 test_contract.py && python3 test_route.py`.
+plugin (Claude Code loads only `agents/` and `hooks/`); `docs/superpowers/INDEX.md`
+says which of those docs still hold.
+
+- Checks (the same as CI): `python3 test_contract.py && python3 test_route.py && ruff check && claude plugin validate .`
+- Routing eval (paid: runs `claude -p` on your account, never in CI): `python3 bench/route_eval.py -n 2`, then `python3 bench/summary.py`.
 - Demo GIF: edit `assets/demo.tape`, regenerate with `vhs assets/demo.tape` ([charmbracelet/vhs](https://github.com/charmbracelet/vhs)).

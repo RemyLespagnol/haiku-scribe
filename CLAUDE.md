@@ -60,8 +60,10 @@ but never loaded.
    wording (a keyword classifier was tried and missed broad prompts without the words).
    - `PreToolUse` on the main thread: the first broad read of a turn is denied once
      with a pointer to `haiku-scribe:haiku-scribe`. Broad = a recursive/wildcard
-     `find`/`grep -r`/`rg`/`ls -R`/`tree`, a command or loop over 3+ files or a glob,
-     a `Glob` with `**`, a `Grep` on a directory, or a 4th distinct file `Read` this turn.
+     `find`/`grep -r`/`rg`/`git grep`/`ls -R`/`tree`, `xargs` into a reader, a command or
+     loop over 4+ files or a glob, a `Glob` with `**`, a content-mode `Grep` on a
+     directory, or a 4th distinct file `Read` this turn. The 4+ threshold matches the
+     agent description's "3 or fewer known files: read directly".
      A retry goes through, so a misjudged call costs one turn.
    - Disarmed for the rest of the turn by a scout call or any edit; subagent calls
      (`agent_id`) and other agent types are never touched.
@@ -86,9 +88,12 @@ but never loaded.
   clauses (read-only tools, routing trigger, coverage statement, read-restraint) are
   present in `agents/haiku-scribe.md`. Keep it in sync when changing the contract.
 - `test_route.py` pins the hook's behavior, including the broad/targeted command
-  examples. Keep it in sync when changing `hooks/route` or `hooks/broad-bash`.
+  examples and the `hooks.json` wiring (the matcher covers every tool `route` gates;
+  the onboarding note is a one-time `systemMessage` to the user, not model context).
+  Keep it in sync when changing `hooks/route`, `hooks/broad-bash` or `hooks/hooks.json`.
 - `pyproject.toml` exists only for the tests + lint; `testpaths` is scoped to the two
   test files on purpose (`bench/` is paid and never runs in CI).
-- `docs/superpowers/` holds the design specs and plans behind each version. Read the
-  relevant spec before changing behavior; the plugin pivot is
+- `docs/superpowers/` holds the design specs and plans behind each version. Start
+  from `docs/superpowers/INDEX.md`: many of them are superseded. Read the relevant
+  spec before changing behavior; the plugin pivot is
   `docs/superpowers/specs/2026-07-09-plugin-pivot-design.md`.

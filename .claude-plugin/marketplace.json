@@ -3,12 +3,12 @@
   "owner": {
     "name": "Remy Lespagnol"
   },
-  "description": "Haiku Scribe: a read-only Haiku context-compression subagent.",
+  "description": "Haiku Scribe: a read-only Haiku context-compression subagent, with a hook that routes broad reads to it.",
   "plugins": [
     {
       "name": "haiku-scribe",
       "source": "./",
-      "description": "Read-only Haiku scout that compresses broad context into structured evidence, saving main-context headroom and stretching the Pro/Max cap.",
+      "description": "Read-only Haiku scout subagent that compresses broad context (surveys, logs, transcripts, unfamiliar flow) into structured evidence, saving main-context headroom and stretching the Pro/Max cap. Ships a routing hook that declines the first broad read of a turn once and points it at the scout (HAIKU_SCRIBE_ROUTE=off disables it).",
       "category": "productivity"
     }
   ]

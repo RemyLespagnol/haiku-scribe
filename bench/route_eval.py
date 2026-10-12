@@ -19,9 +19,9 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 RUNS = REPO / "bench" / "runs"
 STDLIB = Path(argparse.__file__).parent
-# the parent session's effort leaks through these and would override --effort
 # with --sources user..., the installed marketplace copy would shadow the plugin under test
 ONLY_UNDER_TEST = json.dumps({"enabledPlugins": {"haiku-scribe@haiku-scribe": False}})
+# the parent session's effort leaks through these and would override --effort
 ENV = {k: v for k, v in os.environ.items() if k not in ("CLAUDE_EFFORT", "CLAUDE_CODE_EFFORT_LEVEL")}
 
 
@@ -51,6 +51,12 @@ def bug(wd):
                                 "    return s\n")
 
 
+def callers(wd):
+    (wd / "calc.py").write_text("def total(xs):\n    return sum(xs)\n")
+    for n in ("cart", "invoice", "report", "stats"):
+        (wd / f"{n}.py").write_text(f"from calc import total\n\n\ndef {n}_sum(xs):\n    return total(xs)\n")
+
+
 # name: (setup, prompt, expect_scout, answer must contain)
 CASES = {
     # two files carry the answer: the model may decline the scout after the gate and read directly
@@ -70,6 +76,8 @@ CASES = {
     # broad, with none of the usual "overview/explain/how does" wording
     "email-headers": (stdlib("email"), ("Which files in email/ deal with header parsing or folding, and what does "
                       "each one depend on?"), True, ["headerregistry", "_header_value_parser"]),
+    # coding turn over 5 files: what the 4th-Read gate costs real work
+    "rename": (callers, "Rename the function total() to sum_items() everywhere in this project.", False, []),
     "bug-line": (bug, "calc.py has an off-by-one bug in total(); fix it.", False, []),
     "one-file-q": (stdlib("json"), "In json/decoder.py, what attributes does JSONDecodeError set?", False,
                    ["lineno", "colno"]),
@@ -100,8 +108,9 @@ def analyze(events):
                     scout_ok.add(c["tool_use_id"])
     # a backgrounded scout's tool_result is a launch stub; its brief arrives in task_notification
     raw += sum(n for t, n in briefs.items() if stub.get(t, 0) < 2000)
+    brief = max((briefs.get(t, 0) if stub.get(t, 0) < 2000 else stub.get(t, 0) for t in scout_ok), default=0)
     return {"scout": bool(scout_ok), "scout_failed": bool(scout_ids) and not scout_ok,
-            "tools_before_scout": tools_before, "main_tools": tools_total, "raw_main_chars": raw}
+            "tools_before_scout": tools_before, "main_tools": tools_total, "raw_main_chars": raw, "brief_chars": brief}
 
 
 def run(job):

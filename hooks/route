@@ -24,7 +24,8 @@ case $(field tool_name) in
   Edit|Write|MultiEdit|NotebookEdit) : > "$state.off"; exit 0 ;;
   Bash) "$(dirname "$0")/broad-bash" "$(field command)" || exit 0 ;;
   Glob) case $(field pattern) in *'**'*) ;; *) exit 0 ;; esac ;;
-  Grep) p=$(field path); [ -n "$p" ] && [ ! -d "$p" ] && exit 0 ;;
+  Grep) [ "$(field output_mode)" = content ] || exit 0
+    p=$(field path); [ -n "$p" ] && [ ! -d "$p" ] && exit 0 ;;
   Read)
     echo "read:$(field file_path)" >> "$state"
     [ "$(grep '^read:' "$state" | sort -u | wc -l)" -ge 4 ] || exit 0 ;;
