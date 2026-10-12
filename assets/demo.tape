@@ -11,4 +11,4 @@ Hide
 Type "bash assets/demo.sh"
 Enter
 Show
-Sleep 6.5s
+Sleep 8s

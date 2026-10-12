@@ -113,3 +113,27 @@ across the board. 111 sessions in total, $9.91 at list price.
   on a multi-turn implementation task. The deny text tells the model to retry when
   it needs files verbatim, and the first edit disarms the turn.
 - One-shot `-p` runs only. Interactive sessions reset state on each user prompt.
+
+## Addendum 2026-10-12: v0.3.1 rules and the coding turn
+
+v0.3.1 gates a `Grep` only in content mode, puts the Bash file threshold at 4 (as the
+agent description says), adds `git grep`/`ack`/`xargs <reader>`, and lets `sed -i`
+and heredoc bodies through. Sonnet, medium effort, n=2, tag `af`:
+
+| case | scout | pass | cost | main raw | brief |
+|------|-------|------|------|----------|-------|
+| email-headers | 2/2 | 2/2 | 0.070 | 6.7k | 4.7k |
+| specs-history | 2/2 | 2/2 | 0.108 | 9.4k | 4.9k |
+| one-file-q | 0/2 | 2/2 | 0.035 | 0.9k | — |
+| explain-small | 0/2 | 2/2 | 0.033 | 0.2k | — |
+| rename (new) | 2/2 | 0/2 | 0.086 | 4.0k | 2.2k |
+| rename, `HAIKU_SCRIBE_ROUTE=off` | 0/2 | 2/2 | 0.047 | 1.5k | — |
+
+- Routing on broad and one-file prompts is unchanged. specs-history cost is above
+  the earlier runs because one run read 3 more files after the brief, which is the
+  re-read already seen with Opus.
+- **The coding turn is a loss: +83% cost, +12 s.** To rename `total()` across 5 files,
+  Sonnet runs `grep -rnw total . | head -50`. The hook denies it and Sonnet delegates
+  instead of retrying, then edits with `sed -i` anyway. The old rules deny the same
+  call, so this predates v0.3.1. Open.
+- Briefs average 4.7–4.9k chars, above the 4,000 ceiling in the agent contract.

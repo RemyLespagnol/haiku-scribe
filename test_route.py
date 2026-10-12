@@ -2,6 +2,7 @@
 the tool call, never by prompt wording. Runnable as `python3 test_route.py` or via pytest."""
 import json
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -31,18 +32,22 @@ def broad(cmd):
 
 def test_broad_bash_classifier():
     for cmd in ("find . -type f | head -200", "find . -path '*json*' -name '*.py'", "ls -la specs/ && grep -rn -i x specs/",
-                "grep -n foo *.py", "rg PreToolUse", "ls -R", "tree src", "wc -l json/*.py", "cat a.py b.py c.py",
-                "sed -n 1,20p a.md b.md c.md", "cd specs; for f in a.md b.md c.md; do head -3 $f; done",
+                "grep -n foo *.py", "rg PreToolUse", "ls -R", "tree src", "wc -l json/*.py", "cat a.py b.py c.py d.py",
+                "sed -n 1,20p a.md b.md c.md d.md", "cd specs; for f in a.md b.md c.md d.md; do head -3 $f; done",
                 "rtk grep -rn x .", 'cd /x && grep -n "c_make\\|enc" *.py', "cd /x\ngrep -rn foo .",
-                "rg -n foo src/", 'echo "a\\"b" && find . -type f'):
+                "rg -n foo src/", 'echo "a\\"b" && find . -type f', "cat > f <<EOF\nx\nEOF\ngrep -rn foo .", "git grep -n foo", "ack foo",
+                "git ls-files | xargs grep -n foo"):
         assert broad(cmd), cmd
     for cmd in ("ls", "ls -la specs/", "cat -n calc.py", "find . -name argparse.py", "find . -path '*json/decoder.py'",
                 'grep -n "class .*Error" -A 25 ./json/decoder.py', "sed -n 105,120p json/__init__.py",
                 "head -60 argparse.py", "python3 -c 'import glob; print(glob.glob(\"*\"))'", "git log --oneline -5",
-                "tail -n 50 app.log", "cat a.py b.py", "cat package.json 2>/dev/null | head",
+                "tail -n 50 app.log", "cat a.py b.py c.py", "cat package.json 2>/dev/null | head",
                 "tail -n 50 app.log 2>&1 | grep ERROR", "head -5 a.log > out.txt", "cat a b | wc -l",
-                "cat a b > c", "rg -n foo file.py", "for i in 1 2 3 4; do echo $i; done",
-                "cat > f.md <<'EOF'\n- *bold*\nEOF", 'echo "a\\"b" && ls', "x" * 30000):
+                "cat a b > c", "rg -n foo file.py", "git grep -n foo a.py", "git ls-files | wc -l",
+                "sed -i '' 's/a/b/g' a.py b.py c.py d.py", "sed -i 's/a/b/' *.py", "for i in 1 2 3 4; do echo $i; done",
+                "cat > f.md <<'EOF'\n- *bold*\nEOF",
+                "cat >> f.md <<'EOF'\nruns `grep -rn x . | head -50`. The hook denies it and Sonnet delegates\nEOF\nls",
+                'python3 - <<"PY"\nfor f in (\"a.py\", \"b.py\", \"c.py\", \"d.py\"): print(open(f).read())\nPY', 'echo "a\\"b" && ls', "x" * 30000):
         assert not broad(cmd), cmd
 
 
@@ -92,10 +97,12 @@ def test_unwritable_state_never_denies():
 def test_glob_grep_tools():
     turn("s-3")
     assert hook("tool", sid="s-3", tool_name="Glob", tool_input={"pattern": "*.py"}) is None
-    assert hook("tool", sid="s-3", tool_name="Grep", tool_input={"pattern": "x", "path": __file__}) is None
+    assert hook("tool", sid="s-3", tool_name="Grep", tool_input={"pattern": "x", "path": __file__, "output_mode": "content"}) is None
     assert hook("tool", sid="s-3", tool_name="Glob", tool_input={"pattern": "src/**/*.ts"}) == "deny"
+    # locating files or counting matches reads nothing; only content mode does
+    assert hook("tool", sid="s-3", tool_name="Grep", tool_input={"pattern": "def parse"}) is None
     turn("s-3")
-    assert hook("tool", sid="s-3", tool_name="Grep", tool_input={"pattern": '"agent_id":'}) == "deny"
+    assert hook("tool", sid="s-3", tool_name="Grep", tool_input={"pattern": '"agent_id":', "output_mode": "content"}) == "deny"
 
 
 def test_subagents_notifications_and_off_switch_are_ignored():
@@ -106,6 +113,17 @@ def test_subagents_notifications_and_off_switch_are_ignored():
     assert bash("find . -type f") is None
     turn()
     assert bash("find . -type f", env={"HAIKU_SCRIBE_ROUTE": "off"}) is None
+
+
+def test_hooks_json_wiring():
+    cfg = json.loads((HOOKS / "hooks.json").read_text())["hooks"]
+    gated = {t for g in re.findall(r"^\s+([A-Z][\w|]+)\)", (HOOKS / "route").read_text(), re.MULTILINE) for t in g.split("|")}
+    assert gated <= set(cfg["PreToolUse"][0]["matcher"].split("|"))
+    note, home = cfg["UserPromptSubmit"][0]["hooks"][0]["command"], tempfile.mkdtemp()
+    first, second = (subprocess.run(note, shell=True, capture_output=True, text=True, env={**os.environ, "HOME": home},
+                                    check=True).stdout for _ in range(2))
+    assert "HAIKU_SCRIBE_ROUTE=off" in json.loads(first)["systemMessage"]
+    assert second == ""
 
 
 if __name__ == "__main__":

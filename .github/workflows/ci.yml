@@ -8,7 +8,11 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # the hooks must run on Debian dash + mawk and macOS /bin/sh + BSD awk
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,6 +26,5 @@ jobs:
         run: python3 test_route.py
       - name: Lint
         run: ruff check
-      - name: Validate manifests (JSON well-formed)
-        run: |
-          python3 -c "import json,sys; [json.load(open(p)) for p in ('.claude-plugin/plugin.json', '.claude-plugin/marketplace.json', 'hooks/hooks.json')]; print('manifests OK')"
+      - name: Validate plugin manifests
+        run: npx -y @anthropic-ai/claude-code plugin validate .
