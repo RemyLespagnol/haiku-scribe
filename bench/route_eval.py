@@ -8,6 +8,7 @@ CLAUDE.md, plugins and hooks, so only the plugin under test steers routing.
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -57,6 +58,25 @@ def callers(wd):
         (wd / f"{n}.py").write_text(f"from calc import total\n\n\ndef {n}_sum(xs):\n    return total(xs)\n")
 
 
+CITE = re.compile(r"([\w./-]+\.\w+):(\d+)(?:-(\d+))?")
+
+
+def text(content):
+    return content if isinstance(content, str) else "".join(
+        b.get("text", "") for b in content or [] if isinstance(b, dict))
+
+
+def cites(brief, wd):
+    n = bad = 0
+    for path, start, end in CITE.findall(brief):
+        n += 1
+        # shortcut: checks the file exists and the line is in range, not the cited text; diff it if briefs misquote
+        hits = [p for p in [Path(path) if path.startswith("/") else wd / path] if p.is_file()]
+        hits = hits or [p for p in wd.rglob(Path(path).name) if p.is_file()]
+        bad += not any(len(p.read_text(errors="replace").splitlines()) >= int(end or start) for p in hits)
+    return n, bad
+
+
 # name: (setup, prompt, expect_scout, answer must contain)
 CASES = {
     # two files carry the answer: the model may decline the scout after the gate and read directly
@@ -85,12 +105,12 @@ CASES = {
 
 
 def analyze(events):
-    scout_ids, scout_ok, tools_before, tools_total, raw, stub, briefs = set(), set(), None, 0, 0, {}, {}
+    scout_ids, scout_ok, tools_before, tools_total, raw, stub, briefs, bodies = set(), set(), None, 0, 0, {}, {}, {}
     for e in events:
         if e.get("parent_tool_use_id") is not None:
             continue
         if e.get("subtype") == "task_notification":
-            briefs[e.get("tool_use_id")] = len(e.get("summary") or "")
+            briefs[e.get("tool_use_id")] = e.get("summary") or ""
         content = (e.get("message") or {}).get("content") if isinstance(e.get("message"), dict) else None
         if not isinstance(content, list):
             continue
@@ -106,11 +126,14 @@ def analyze(events):
                 stub[c.get("tool_use_id")] = len(json.dumps(c.get("content", "")))
                 if c.get("tool_use_id") in scout_ids and not c.get("is_error"):
                     scout_ok.add(c["tool_use_id"])
+                    bodies[c["tool_use_id"]] = text(c.get("content", ""))
     # a backgrounded scout's tool_result is a launch stub; its brief arrives in task_notification
-    raw += sum(n for t, n in briefs.items() if stub.get(t, 0) < 2000)
-    brief = max((briefs.get(t, 0) if stub.get(t, 0) < 2000 else stub.get(t, 0) for t in scout_ok), default=0)
+    texts = {t: briefs.get(t, "") if stub.get(t, 0) < 2000 else bodies[t] for t in scout_ok}
+    raw += sum(len(b) for t, b in briefs.items() if stub.get(t, 0) < 2000)
+    brief = max((len(texts[t]) if stub.get(t, 0) < 2000 else stub[t] for t in scout_ok), default=0)
     return {"scout": bool(scout_ok), "scout_failed": bool(scout_ids) and not scout_ok,
-            "tools_before_scout": tools_before, "main_tools": tools_total, "raw_main_chars": raw, "brief_chars": brief}
+            "tools_before_scout": tools_before, "main_tools": tools_total, "raw_main_chars": raw, "brief_chars": brief,
+            "brief_text": "\n".join(texts.values())}
 
 
 def run(job):
@@ -125,16 +148,18 @@ def run(job):
              "--settings", ONLY_UNDER_TEST, "--plugin-dir", str(plugin), "--dangerously-skip-permissions",
              "--output-format", "stream-json", "--verbose", "--include-hook-events", prompt],
             cwd=wd, env=ENV, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=600, check=False)
+        events = [json.loads(line) for line in out.stdout.splitlines() if line.startswith("{")]
+        stats = analyze(events)
+        stats["cites"], stats["bad_cites"] = cites(stats.pop("brief_text"), wd)
     except subprocess.TimeoutExpired:
         return {"case": name, "tag": tag, "i": i, "error": "timeout"}
     finally:
         shutil.rmtree(wd)
     RUNS.mkdir(exist_ok=True)
     (RUNS / f"route-{tag}-{name}-{i}.jsonl").write_text(out.stdout)
-    events = [json.loads(line) for line in out.stdout.splitlines() if line.startswith("{")]
     result = next((e for e in reversed(events) if e.get("type") == "result"), {})
     usage = result.get("modelUsage") or {}
-    r = {"case": name, "tag": tag, "model": model, "i": i, "expect": expect, **analyze(events),
+    r = {"case": name, "tag": tag, "model": model, "i": i, "expect": expect, **stats,
          "cost": round(result.get("total_cost_usd") or 0, 4),
          "haiku": round(sum(v.get("costUSD", 0) for k, v in usage.items() if "haiku" in k), 4),
          "secs": round(time.time() - t0), "correct": all(m in (result.get("result") or "") for m in must)}
