@@ -19,8 +19,10 @@ this one repo.
 ```bash
 python3 test_contract.py         # asserts the agent contract keeps its required clauses
 python3 test_route.py            # routing hook: broad-call classifier, deny-once, disarm rules
-python3 -m pytest -q             # both tests via pytest
+python3 test_bench.py            # bench helpers: citation check, field audit (free)
+python3 -m pytest -q             # all three via pytest
 python3 bench/route_eval.py -n 2 # paid routing eval (claude -p, clean env); summary: bench/summary.py
+python3 bench/field_audit.py --since YYYY-MM-DD  # free: what the hook did in your real sessions
 ruff check                       # lint
 claude plugin validate .         # validate the plugin/marketplace manifests
 claude --plugin-dir . -p "..."   # load the plugin locally without installing
@@ -73,7 +75,8 @@ but never loaded.
      unwritable state dir never denies. `HAIKU_SCRIBE_ROUTE=off` disables it.
    - Must stay portable: macOS `/bin/sh` + BSD awk and Debian dash + mawk (no `{n,}`
      regex intervals). `test_route.py` passes on both.
-   - Evidence: `docs/superpowers/evaluations/2026-10-10-route-hook.md`.
+   - Evidence: `docs/superpowers/evaluations/2026-10-10-route-hook.md`; held-out cases, n=3
+     medians and the field audit in `2026-10-12-held-out-bench.md`.
    The onboarding note (inline command, same `UserPromptSubmit` block) fires once per
    marker. The marker is `~/.claude/.haiku-scribe-onboarded-autoupdate`: rename it when
    the note gains something existing users must see (here, how to turn on auto-update,
@@ -92,8 +95,9 @@ but never loaded.
   examples and the `hooks.json` wiring (the matcher covers every tool `route` gates;
   the onboarding note is a one-time `systemMessage` to the user, not model context).
   Keep it in sync when changing `hooks/route`, `hooks/broad-bash` or `hooks/hooks.json`.
-- `pyproject.toml` exists only for the tests + lint; `testpaths` is scoped to the two
-  test files on purpose (`bench/` is paid and never runs in CI).
+- `pyproject.toml` exists only for the tests + lint; `testpaths` is scoped to the three
+  test files on purpose (`bench/` runs are paid and never run in CI; their pure helpers are
+  tested in `test_bench.py`).
 - `docs/superpowers/` holds the design specs and plans behind each version. Start
   from `docs/superpowers/INDEX.md`: many of them are superseded. Read the relevant
   spec before changing behavior; the plugin pivot is
