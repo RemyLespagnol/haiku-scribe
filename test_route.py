@@ -117,7 +117,7 @@ def test_subagents_notifications_and_off_switch_are_ignored():
 
 def test_hooks_json_wiring():
     cfg = json.loads((HOOKS / "hooks.json").read_text())["hooks"]
-    gated = {t for g in re.findall(r"^\s+([A-Z][\w|]+)\)", (HOOKS / "route").read_text(), re.M) for t in g.split("|")}
+    gated = {t for g in re.findall(r"^\s+([A-Z][\w|]+)\)", (HOOKS / "route").read_text(), re.MULTILINE) for t in g.split("|")}
     assert gated <= set(cfg["PreToolUse"][0]["matcher"].split("|"))
     note, home = cfg["UserPromptSubmit"][0]["hooks"][0]["command"], tempfile.mkdtemp()
     first, second = (subprocess.run(note, shell=True, capture_output=True, text=True, env={**os.environ, "HOME": home},
