@@ -58,6 +58,28 @@ def callers(wd):
         (wd / f"{n}.py").write_text(f"from calc import total\n\n\ndef {n}_sum(xs):\n    return total(xs)\n")
 
 
+def biglog(wd):
+    out = []
+    for n in range(750):
+        s = n * 8
+        ts = f"2026-10-11T{1 + s // 3600:02d}:{s // 60 % 60:02d}:{s % 60:02d}Z"
+        if n == 525:
+            out.append(f"{ts} WARN db pool high-water 30/32")
+        if 555 <= n < 567 and n % 2:
+            out.append(f"{ts} ERROR api GET /items/{n} 503 db pool exhausted (32/32) req-e1a{(n - 555) // 2 + 1:02d}")
+        else:
+            out.append(f"{ts} INFO api GET /items/{n} 200 {n % 37 + 5}ms req-{n:05x}")
+    (wd / "app.log").write_text("\n".join(out) + "\n")
+
+
+def bigmod(wd):
+    doc = "Return a copy of xs with every item multiplied by {n}; an empty input gives an empty list."
+    fns = "".join(f'def scale_{n:03d}(xs):\n    """{doc.format(n=n)}"""\n    return [x * {n} for x in xs]\n\n\n'
+                  for n in range(330))
+    (wd / "big.py").write_text(fns + "def total(xs):\n    s = 0\n    for i in range(1, len(xs)):\n        s += xs[i]\n"
+                               "    return s\n")
+
+
 CITE = re.compile(r"([\w./-]+\.\w+):(\d+)(?:-(\d+))?")
 
 
@@ -101,6 +123,24 @@ CASES = {
     "bug-line": (bug, "calc.py has an off-by-one bug in total(); fix it.", False, []),
     "one-file-q": (stdlib("json"), "In json/decoder.py, what attributes does JSONDecodeError set?", False,
                    ["lineno", "colno"]),
+    # held out (added 2026-10-12): never tune the hook or the agent contract on these
+    "logging-flow": (stdlib("logging"), ("How does a logger.warning() call end up written to a stream? Using the "
+                     "logging/ package here, name the classes and methods on the path and say where level filtering "
+                     "happens."), None, ["callHandlers", "StreamHandler"]),
+    "unittest-flow": (stdlib("unittest"), ("Using the unittest/ package here, trace what `python -m unittest "
+                      "discover` does: which modules and functions find the test files, load them into suites, run "
+                      "them and print the results."), True, ["TestLoader", "TextTestRunner"]),
+    # one ~54 KB file: a summary-tolerant question, then the detail-demanding shape that lost in the break-even sweep
+    "configparser-explain": (stdlib("configparser.py"), ("How does configparser.py turn an INI file into sections "
+                             "and options? Walk through the parsing loop and explain when interpolation is applied."),
+                             None, ["_read", "Interpolation"]),
+    "configparser-signatures": (stdlib("configparser.py"), ("List every public method of RawConfigParser in "
+                                "configparser.py with its exact signature, in source order."), None,
+                                ["read_dict(self, dictionary, source=", "has_option(self, section, option)"]),
+    "big-log": (biglog, ("app.log is last night's service log. What went wrong, when did it start, and which "
+                "request IDs failed?"), None, ["02:14", "req-e1a01", "req-e1a06"]),
+    # coding turn on one ~50 KB file: a whole-file Read gate must cost at most one retry here
+    "big-edit": (bigmod, "big.py has an off-by-one bug in total(); fix it.", False, []),
 }
 
 
