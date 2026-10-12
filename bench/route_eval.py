@@ -99,7 +99,9 @@ def cites(brief, wd):
         n += 1
         # shortcut: checks the file exists and the line is in range, not the cited text; diff it if briefs misquote
         hits = [p for p in [Path(path) if path.startswith("/") else wd / path] if p.is_file()]
-        hits = hits or [p for p in wd.rglob(Path(path).name) if p.is_file()]
+        name = Path(path).name
+        # briefs often drop a dated prefix: v1-design.md for 2026-07-06-v1-design.md
+        hits = hits or [p for p in wd.rglob(f"*{name}") if p.is_file() and (p.name == name or p.name.endswith("-" + name))]
         bad += not any(len(p.read_text(errors="replace").splitlines()) >= int(end or start) for p in hits)
     return n, bad
 

@@ -17,6 +17,8 @@ def test_cites_flags_missing_files_and_lines_past_eof():
     brief = (f"pkg/a.py:3 and a.py:10 (basename) and pkg/a.py:2-4 and {wd}/pkg/a.py:5 are fine; "
              "pkg/a.py:11 is past the end and ghost.py:1 does not exist")
     assert route_eval.cites(brief, wd) == (6, 2)
+    (wd / "2026-07-04-design.md").write_text("x\n" * 5)
+    assert route_eval.cites("design.md:5 (dated name shortened), sign.md:1 (not a name)", wd) == (2, 1)
 
 
 def test_any_result_turn_can_carry_the_answer():
