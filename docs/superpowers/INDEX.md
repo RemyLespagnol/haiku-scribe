@@ -15,7 +15,7 @@ Plan checkboxes were never ticked; this index and git history are the record.
 | `specs/` + `plans/2026-07-09-discoverability-top-of-fold*` | Shipped (82670a6). |
 | `evaluations/2026-10-09-haiku-5-5-effort-pin.md` | Shipped (#6): `effort: medium`. |
 | `evaluations/2026-10-10-route-hook.md` | Shipped (#7): the routing hook. Superseded numbers: see 2026-10-12. |
-| `evaluations/2026-10-12-held-out-bench.md`, `plans/2026-10-12-held-out-bench-and-large-read.md` | Latest numbers: held-out cases, n=3 medians, field audit. Large-file Read gate not shipped: no model ever read a large file whole. |
+| `evaluations/2026-10-12-held-out-bench.md`, `plans/2026-10-12-held-out-bench-and-large-read.md` | Latest numbers: held-out cases, n=3 medians, field audit. Large-file Read gate not shipped: no whole-file Read of a large file in 72 held-out runs, 1 in 274 in the author's sessions. |
 | `evaluations/2026-07-06-v1-2-break-even-sweep.md` | Holds: the loss case (large file + detail task → main re-reads → +50%) behind the coverage statement. Re-run on the current contract in `evaluations/2026-10-12-held-out-bench.md` (`configparser-signatures`): never reached, no one-file task delegates. |
 | `evaluations/2026-07-07-clean-win-qa-extraction.md` | Holds: the win case, counterpart of the sweep. |
 

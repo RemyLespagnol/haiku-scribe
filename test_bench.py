@@ -88,14 +88,16 @@ def test_field_audit_outcomes_reads_and_tokens():
         result("t2", "### Summary\n- brief"),
         use("t3", "Read", "m3", file_path="/x/a.py"),
         result("t3", "code"),
+        use("t6", "Bash", "m6", command="cd /x && sed -n 1,20p b.py"),
+        use("t7", "Bash", "m7", command="git status"),
         {**say("m9", out=1000), "isSidechain": True},
         prompt("rename total"),
-        use("t4", "Bash", "m4", command="grep -rnw total ."),
+        use("t4", "Bash", "m4", command="grep -rnw total .", description="Find total"),
         result("t4", DENY, err=True),
-        use("t5", "Bash", "m5", command="grep -rnw total ."),
+        use("t5", "Bash", "m5", command="grep -rnw total .", description="Retry: find total"),
     ])
-    with open(main, "a") as f:
-        f.write('{"type": "assist')
+    with open(main, "ab") as f:
+        f.write('{"type": "assistant", "x": "'.encode() + "é".encode()[:1])
     sub = root / "proj" / "s1" / "subagents" / "agent-a1.jsonl"
     write(sub, [say("h1", out=20, model="claude-haiku-5-5")])
     sub.with_name("agent-a1.meta.json").write_text('{"agentType": "haiku-scribe:haiku-scribe"}')
@@ -103,8 +105,8 @@ def test_field_audit_outcomes_reads_and_tokens():
     a = field_audit.audit(root)
     assert (a["sessions"], a["turns"]) == (1, 2)
     assert a["outcomes"] == {"scout": 1, "retry": 1}
-    assert a["briefs"] == [len("### Summary\n- brief")] and a["reads_after"] == [1]
-    assert a["tokens"][("main", "claude-opus-5-5")]["output"] == 7 + 1 + 1 + 1 + 1
+    assert a["briefs"] == [len("### Summary\n- brief")] and a["reads_after"] == [2]
+    assert a["tokens"][("main", "claude-opus-5-5")]["output"] == 7 + 1 + 1 + 1 + 1 + 1 + 1
     assert a["tokens"][("haiku-scribe:haiku-scribe", "claude-haiku-5-5")]["write_1h"] == 4
     assert field_audit.audit(root, since="2026-10-13")["sessions"] == 0
 

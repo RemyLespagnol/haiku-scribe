@@ -13,11 +13,12 @@ from pathlib import Path
 from statistics import median
 
 DENY = "haiku-scribe routing:"
+READER = re.compile(r"(^|[;&|]\s*)(cat|sed|head|tail|grep|rg|awk|nl)\s")
 BUCKETS = ("input", "cache_read", "write_5m", "write_1h", "output")
 
 
 def rows(path):
-    with open(path, encoding="utf-8") as f:
+    with open(path, encoding="utf-8", errors="replace") as f:
         for line in f:
             try:
                 yield json.loads(line)
@@ -48,16 +49,24 @@ def is_scout(call):
     return name in ("Agent", "Task") and "haiku-scribe" in str((inp or {}).get("subagent_type"))
 
 
+def same_call(a, b):
+    def strip(c):
+        # a retry often rewords only the Bash description
+        return c[0], {k: v for k, v in (c[1] or {}).items() if k != "description"}
+    return b is not None and strip(a) == strip(b)
+
+
 def judge(seq, calls, a):
     for i, (kind, x) in enumerate(seq):
         after = [calls[y] for k, y in seq[i + 1:] if k == "use"]
         if kind == "deny":
             nxt = after[0] if after else None
-            out = "ended" if nxt is None else "scout" if is_scout(nxt) else "retry" if nxt == calls.get(x) else "other"
+            out = "ended" if nxt is None else "scout" if is_scout(nxt) else "retry" if same_call(nxt, calls.get(x)) else "other"
             a["outcomes"][out] += 1
         elif kind == "brief":
             a["briefs"].append(len(x))
-            a["reads_after"].append(sum(name in ("Read", "Grep", "Glob") for name, _ in after))
+            a["reads_after"].append(sum(name in ("Read", "Grep", "Glob") or name == "Bash" and bool(
+                READER.search(str((inp or {}).get("command", "")))) for name, inp in after))
 
 
 def turns(rs, a):

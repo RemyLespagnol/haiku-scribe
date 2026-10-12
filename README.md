@@ -106,10 +106,10 @@ turns the hook off until your next prompt.
 Measured in a clean environment (no user `CLAUDE.md`, 3 runs per case, medians): over
 6 broad prompts, 2 of them held out from tuning, Sonnet 5.5 and Opus 5.5 delegated in 34
 of 36 runs, against 0 of 36 without the hook. Neither delegated on any of 24 one-file
-runs, a bug fix in a 51 KB file included. On broad material the main context shrank
-33–90% and cost fell by up to 49% (Sonnet) and 41% (Opus); when a few greps already
-answer the question, delegating costs the same or up to a third more. Each delegation
-adds 6–80 s. Turn routing off with `HAIKU_SCRIBE_ROUTE=off`. To **force** the
+runs, a bug fix in a 51 KB file included. The main context shrank in 11 of the 12
+broad prompt/model pairs, by 33–90%. Cost fell clearly on the broadest material (−49% for
+Sonnet surveying a package, −41% for Opus tracing one); elsewhere the change stayed
+within the spread between identical runs. Each delegation adds 6–80 s. Turn routing off with `HAIKU_SCRIBE_ROUTE=off`. To **force** the
 scout, invoke it manually:
 
 ```
