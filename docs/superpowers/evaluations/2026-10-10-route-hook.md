@@ -135,5 +135,21 @@ and heredoc bodies through. Sonnet, medium effort, n=2, tag `af`:
 - **The coding turn is a loss: +83% cost, +12 s.** To rename `total()` across 5 files,
   Sonnet runs `grep -rnw total . | head -50`. The hook denies it and Sonnet delegates
   instead of retrying, then edits with `sed -i` anyway. The old rules deny the same
-  call, so this predates v0.3.1. Open.
+  call, so this predates v0.3.1. Fixed in v0.3.2, below.
 - Briefs average 4.7–4.9k chars, above the 4,000 ceiling in the agent contract.
+
+### v0.3.2: the deny text leads with the edit case
+
+The denial now opens with "if this search locates code you are about to change (a
+fix, rename or refactor), retry this call now", before the delegation pointer.
+Sonnet, medium, n=2, tag `rt`:
+
+| case | scout | pass | cost | main raw | brief |
+|------|-------|------|------|----------|-------|
+| rename | 0/2 | 2/2 | 0.050 | 1.8k | — |
+| bug-line | 0/2 | 2/2 | 0.034 | 0.3k | — |
+| email-headers | 2/2 | 2/2 | 0.067 | 6.2k | 4.4k |
+| specs-history | 2/2 | 2/2 | 0.071 | 5.8k | 4.0k |
+
+Rename is back to parity with routing off (0.050 vs 0.047): the model retries the grep and
+edits. Broad prompts still delegate 4/4. Opus not re-run.
