@@ -88,6 +88,11 @@ def text(content):
         b.get("text", "") for b in content or [] if isinstance(b, dict))
 
 
+def correct(events, must):
+    # a backgrounded command re-opens the -p session after the answer; its last turn is only an acknowledgement
+    return any(all(m in (e.get("result") or "") for m in must) for e in events if e.get("type") == "result")
+
+
 def cites(brief, wd):
     n = bad = 0
     for path, start, end in CITE.findall(brief):
@@ -129,7 +134,7 @@ CASES = {
                      "happens."), None, ["callHandlers", "StreamHandler"]),
     "unittest-flow": (stdlib("unittest"), ("Using the unittest/ package here, trace what `python -m unittest "
                       "discover` does: which modules and functions find the test files, load them into suites, run "
-                      "them and print the results."), True, ["TestLoader", "TextTestRunner"]),
+                      "them and print the results."), True, ["loader.py", "TextTestRunner"]),
     # one ~54 KB file: a summary-tolerant question, then the detail-demanding shape that lost in the break-even sweep
     "configparser-explain": (stdlib("configparser.py"), ("How does configparser.py turn an INI file into sections "
                              "and options? Walk through the parsing loop and explain when interpolation is applied."),
@@ -202,7 +207,7 @@ def run(job):
     r = {"case": name, "tag": tag, "model": model, "i": i, "expect": expect, **stats,
          "cost": round(result.get("total_cost_usd") or 0, 4),
          "haiku": round(sum(v.get("costUSD", 0) for k, v in usage.items() if "haiku" in k), 4),
-         "secs": round(time.time() - t0), "correct": all(m in (result.get("result") or "") for m in must)}
+         "secs": round(time.time() - t0), "correct": correct(events, must)}
     r["pass"] = out.returncode == 0 and not r["scout_failed"] and r["correct"] and expect in (None, r["scout"])
     return r
 

@@ -19,6 +19,14 @@ def test_cites_flags_missing_files_and_lines_past_eof():
     assert route_eval.cites(brief, wd) == (6, 2)
 
 
+def test_any_result_turn_can_carry_the_answer():
+    # a backgrounded command re-opens the -p session; its last turn only acknowledges the notification
+    events = [{"type": "result", "result": "read_dict(self) and has_option(self)"},
+              {"type": "result", "result": "background find finished, answer stands"}]
+    assert route_eval.correct(events, ["read_dict(self)", "has_option(self)"])
+    assert not route_eval.correct(events, ["read_dict(self)", "missing"])
+
+
 HELD_OUT = ("logging-flow", "unittest-flow", "configparser-explain", "configparser-signatures", "big-log", "big-edit")
 
 
