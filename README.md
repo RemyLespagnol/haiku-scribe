@@ -19,6 +19,38 @@ transcripts, generated output, flow mapping across unfamiliar code — into a
 compact, evidence-backed brief. The main model reasons over the brief instead of
 loading the raw source itself.
 
+## Results
+
+| | without the plugin | with haiku-scribe |
+|---|---|---|
+| Broad prompts handed to the scout | 0 / 36 | **34 / 36** |
+| One-file tasks wrongly delegated | 0 / 24 | **0 / 24** |
+| Raw tool output in the main context (broad prompts) | baseline | **−33% to −90%** on 11 of 12 |
+| Cost on the broadest reads | baseline | **−17% to −49%** |
+| Correct answers | 60 / 60 | **60 / 60** |
+
+Raw tool output loaded into the main context, in characters:
+
+```
+Sonnet · architecture overview of the `email` package   cost −49%
+  without  ██████████████████████████████  53.8k
+  with     ███                              5.6k  −90%
+
+Opus · trace `python -m unittest` across 13 files       cost −41%
+  without  ██████████████████████          39.4k
+  with     ████                             6.5k  −84%
+
+Sonnet · trace `python -m unittest` across 13 files     cost −35%
+  without  █████████████████               31.4k
+  with     ███                              5.7k  −82%
+```
+
+120 `claude -p` runs in a clean environment (no user `CLAUDE.md`), Sonnet 5.5 and Opus
+5.5, 3 runs per case, medians, 6 of the 10 cases held out from tuning. What it costs you:
+each delegation adds 6–80 s, and on smaller surveys the cost change stays within the
+spread between identical runs. Every case, with ranges:
+[the bench](./docs/superpowers/evaluations/2026-10-12-held-out-bench.md).
+
 ## Why
 
 - **Main-context headroom** — the primary win, on every tier. The scout reads the
@@ -67,7 +99,7 @@ services/session.py:140: JWT minted, 24h expiry.
 services/session.py:140: inspect exact claim set before changing token shape.
 ````
 
-The numbers above are illustrative, not a benchmark — the point is the *shape*:
+The numbers above are illustrative (measured ones are in [Results](#results)) — the point is the *shape*:
 the main context keeps ~40 lines of structured evidence instead of 8 files of
 source. **One caveat still holds:** when the scout says coverage is complete,
 use the brief as-is; re-reading the same files spends Haiku *and* the main model.
@@ -101,16 +133,10 @@ a command over many files or a glob, a 4th file in the same turn), the hook
 declines that call once and points it at the scout. If the model really needs
 those files verbatim (to edit them, or one or two are enough), it retries and the
 retry goes through, so a misjudged call costs one turn. Any edit, or a scout call,
-turns the hook off until your next prompt.
+turns the hook off until your next prompt. In the bench ([Results](#results)) it never
+fired on a one-file task, a bug fix in a 51 KB file included.
 
-Measured in a clean environment (no user `CLAUDE.md`, 3 runs per case, medians): over
-6 broad prompts, 2 of them held out from tuning, Sonnet 5.5 and Opus 5.5 delegated in 34
-of 36 runs, against 0 of 36 without the hook. Neither delegated on any of 24 one-file
-runs, a bug fix in a 51 KB file included. The main context shrank in 11 of the 12
-broad prompt/model pairs, by 33–90%. Cost fell clearly on the broadest material (−49% for
-Sonnet surveying a package, −41% for Opus tracing one); elsewhere the change stayed
-within the spread between identical runs. Each delegation adds 6–80 s. Turn routing off with `HAIKU_SCRIBE_ROUTE=off`. To **force** the
-scout, invoke it manually:
+Turn routing off with `HAIKU_SCRIBE_ROUTE=off`. To **force** the scout, invoke it manually:
 
 ```
 @haiku-scribe survey the auth flow across src/ and list every entrypoint
