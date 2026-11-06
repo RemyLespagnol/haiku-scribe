@@ -67,7 +67,8 @@ but never loaded.
      directory, or a 4th distinct file `Read` this turn. The 4+ threshold matches the
      agent description's "3 or fewer known files: read directly".
      A retry goes through, so a misjudged call costs one turn.
-   - Disarmed for the rest of the turn by a scout call or any edit; subagent calls
+   - Disarmed for the rest of the turn by a scout call, any edit, or a Bash call that changes
+     the tree (`git worktree add`, `checkout -b`, `mkdir`, `sed -i`...: the search then locates code being changed); subagent calls
      (`agent_id`) and other agent types are never touched.
    - State: per-session files in `$XDG_RUNTIME_DIR` (else `$TMPDIR`, else `/tmp`).
      `UserPromptSubmit` only resets them (not on `<task-notification>` turns). The
