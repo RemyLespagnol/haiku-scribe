@@ -1,6 +1,8 @@
 #!/bin/sh
 # Exit 0 when the JSON-escaped shell command in $1 reads broadly: a recursive search
 # or listing, a wildcard find, or one command or loop over 4+ files or a glob.
+# Exit 2 when it also changes the tree (a worktree, branch, file move, in-place edit):
+# the search then locates code being changed, like a search after an Edit.
 # Huge commands (heredocs) are never broad reads, and awk is quadratic on them.
 [ ${#1} -gt 20000 ] && exit 1
 printf '%s\n' "$1" | awk '
@@ -8,6 +10,7 @@ printf '%s\n' "$1" | awk '
   $0 = drop_heredocs($0)
   gsub(/\\n/, ";"); gsub(/\\"/, "\""); gsub(/\\\\/, "\\")
   n = split(unquote_ops($0), seg, /&&|\|\||;|\|/)
+  for (i = 1; i <= n; i++) if (mutates(seg[i])) exit 2
   for (i = 1; i <= n; i++) if (broad(seg[i])) exit 0
   exit 1
 }
@@ -41,6 +44,11 @@ function args(s, w,   k, j, m) {
   k = split(s, w, /[ \t]+/); m = 0
   for (j = 2; j <= k; j++) if (w[j] != "" && w[j] !~ /^-/) w[++m] = w[j]
   return m
+}
+function mutates(s) {
+  sub(/^[ \t]+/, "", s); sub(/^rtk[ \t]+/, "", s)
+  if (s ~ /^(mkdir|mv|cp|rm|touch|ln)[ \t]/ || s ~ /^(sed|perl)[ \t](.*[ \t])?-[a-zA-Z]*i/) return 1
+  return s ~ /^git[ \t]+(worktree[ \t]+add|checkout[ \t]+-[bB]|switch[ \t]+-[cC]|add|commit|mv|rm|apply|restore)([ \t]|$)/
 }
 function broad(s,   w, k, a, j, last, m, n) {
   sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); sub(/^rtk[ \t]+/, "", s)

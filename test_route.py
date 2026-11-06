@@ -67,6 +67,22 @@ def test_fourth_distinct_file_read_is_denied():
     assert hook("tool", sid="s-2", tool_name="Read", tool_input={"file_path": "/x/d.py"}) == "deny"
 
 
+def mutates(cmd):
+    return subprocess.run([str(HOOKS / "broad-bash"), json.dumps(cmd)[1:-1]], check=False).returncode == 2
+
+
+def test_tree_changing_bash_is_never_broad_and_disarms_the_turn():
+    for cmd in ('git worktree add -b chore/x ../x main 2>&1 | tail -1 && cd ../x && git grep -nE "lespagnol|/Users/"',
+                "git checkout -b fix && grep -rn foo .", "mkdir -p out && find . -type f", "sed -i '' 's/a/b/' *.py",
+                "rtk git commit -m x && rg foo"):
+        assert mutates(cmd), cmd
+    for cmd in ("grep -rn foo .", "git log --oneline -5", "cat > f <<EOF\nx\nEOF\ngrep -rn foo .", "echo 'rm -rf x'"):
+        assert not mutates(cmd), cmd
+    turn()
+    assert bash("git worktree add ../x main && cd ../x && git grep -n foo") is None
+    assert bash("grep -rn foo .") is None
+
+
 def test_scout_call_disarms_and_other_agents_are_never_gated():
     turn()
     assert hook("tool", tool_name="Agent", tool_input={"subagent_type": "Explore"}) is None

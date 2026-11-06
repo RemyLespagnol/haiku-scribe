@@ -2,7 +2,8 @@
 # Routes broad reading to the haiku-scribe scout, judged by what the main model is
 # about to do, not by prompt wording. $1 = prompt (new turn: reset) | tool. The first
 # broad read of a turn (recursive search, many files, a 4th distinct file) is denied
-# once with a pointer to the scout; a retry goes through, and an edit disarms the turn.
+# once with a pointer to the scout; a retry goes through, and an edit (or a Bash call
+# that changes the tree) disarms the turn.
 # Fails open.
 # Off switch: HAIKU_SCRIBE_ROUTE=off.
 [ "${HAIKU_SCRIBE_ROUTE:-}" = off ] && exit 0
@@ -22,7 +23,8 @@ field() { printf '%s' "$in" | sed -nE "s/.*\"$1\" *: *\"(([^\"\\\\]|\\\\.)*)\".*
 case $(field tool_name) in
   Agent|Task) [ "$(field subagent_type | cut -c1-12)" = haiku-scribe ] && : > "$state.off"; exit 0 ;;
   Edit|Write|MultiEdit|NotebookEdit) : > "$state.off"; exit 0 ;;
-  Bash) "$(dirname "$0")/broad-bash" "$(field command)" || exit 0 ;;
+  Bash) "$(dirname "$0")/broad-bash" "$(field command)"
+    case $? in 0) ;; 2) : > "$state.off"; exit 0 ;; *) exit 0 ;; esac ;;
   Glob) case $(field pattern) in *'**'*) ;; *) exit 0 ;; esac ;;
   Grep) [ "$(field output_mode)" = content ] || exit 0
     p=$(field path); [ -n "$p" ] && [ ! -d "$p" ] && exit 0 ;;
